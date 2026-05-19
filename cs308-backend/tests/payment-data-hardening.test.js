@@ -41,7 +41,7 @@ beforeAll(async () => {
     cartId: `cart-payhard-${Date.now()}`,
     items: [{ productId: "p001", name: "Apple iPhone", quantity: 1, unitPrice: 999 }],
     totalPrice: 999,
-    status: "pending",
+    status: "pending_payment",
     address: "Test Address",
   });
   testOrderId = order._id.toString();
@@ -112,7 +112,7 @@ describe("Payment Data Hardening", () => {
       cartId: `cart-declined-${Date.now()}`,
       items: [{ productId: "p002", name: "Test Product", quantity: 1, unitPrice: 50 }],
       totalPrice: 50,
-      status: "pending",
+      status: "pending_payment",
       address: "Test Address",
     });
 

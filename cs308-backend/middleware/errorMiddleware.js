@@ -8,6 +8,15 @@ const errorHandler = (error, req, res, next) => {
   let statusCode = error.statusCode || 500;
   let code = error.code || "INTERNAL_SERVER_ERROR";
 
+  // Convert Mongoose validation errors into 400 responses
+  if (error.name === "ValidationError") {
+    statusCode = 400;
+    code = "VALIDATION_ERROR";
+    error.message = Object.values(error.errors)
+      .map((e) => e.message)
+      .join(", ");
+  }
+
   // Convert multer upload errors into friendly API responses for the profile form
   if (error.name === "MulterError") {
     statusCode = 400;

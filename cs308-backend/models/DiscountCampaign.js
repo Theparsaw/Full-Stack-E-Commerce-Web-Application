@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const AppError = require("../utils/appError");
 
 const discountCampaignSchema = new mongoose.Schema(
   {
@@ -42,7 +43,7 @@ const discountCampaignSchema = new mongoose.Schema(
 // End date must be after start date
 discountCampaignSchema.pre("save", function () {
   if (this.endDate <= this.startDate) {
-    throw new Error("End date must be after start date");
+    throw new AppError("End date must be after start date", 400, "VALIDATION_ERROR");
   }
 });
 
