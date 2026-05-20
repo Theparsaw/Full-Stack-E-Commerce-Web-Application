@@ -61,6 +61,33 @@ const getReviewerId = (req) => String(req.user?.id || "").trim();
 
 const normalizeManagerNotes = (managerNotes) => String(managerNotes || "").trim();
 
+const mergeOrderItemsByProductId = (items = []) => {
+  const itemsByProductId = new Map();
+
+  for (const item of items) {
+    const productId = String(item.productId || "").trim();
+    if (!productId) continue;
+
+    const existingItem = itemsByProductId.get(productId);
+
+    if (existingItem) {
+      existingItem.quantity += Number(item.quantity || 0);
+      existingItem.returnedQuantity += Number(item.returnedQuantity || 0);
+      existingItem.status = existingItem.returnedQuantity >= existingItem.quantity ? "returned" : "active";
+      continue;
+    }
+
+    itemsByProductId.set(productId, {
+      ...item,
+      productId,
+      quantity: Number(item.quantity || 0),
+      returnedQuantity: Number(item.returnedQuantity || 0),
+    });
+  }
+
+  return Array.from(itemsByProductId.values());
+};
+
 const findExistingReturnRequests = async (userId, orderId) => {
   const query = ReturnRequest.find({ userId, orderId });
   if (!query) return null;
@@ -120,6 +147,7 @@ const createReturnRequest = async (req, res) => {
     let refundAmount = 0;
     const processedItems = [];
     const seenProductIds = new Set();
+    const returnableOrderItems = mergeOrderItemsByProductId(order.items || []);
     const existingRequests = await findExistingReturnRequests(req.user.id, orderId) || [];
     const returnedQuantityByProductId = existingRequests
       .filter((request) => request.status !== "rejected")
@@ -146,7 +174,7 @@ const createReturnRequest = async (req, res) => {
         return fail(400, { message: "Return quantity must be a positive integer" });
       }
 
-      const orderItem = order.items.find(i => String(i.productId) === requestedProductId);
+      const orderItem = returnableOrderItems.find(i => String(i.productId) === requestedProductId);
       if (!orderItem) return fail(400, { message: "Selected return items are not part of this order" });
 
       if (requestedQuantity > Number(orderItem.quantity)) {
@@ -159,7 +187,12 @@ const createReturnRequest = async (req, res) => {
       }
       
       refundAmount += orderItem.unitPrice * requestedQuantity;
-      processedItems.push({ ...orderItem, quantity: requestedQuantity });
+      processedItems.push({
+        productId: orderItem.productId,
+        name: orderItem.name,
+        unitPrice: orderItem.unitPrice,
+        quantity: requestedQuantity,
+      });
     }
 
     const returnRequest = await ReturnRequest.create({
@@ -235,6 +268,44 @@ const approveReturnRequest = async (req, res) => {
       }
 
       for (const item of returnReq.items) {
+        const orderQuery = Order.findOne({ _id: returnReq.orderId, "items.productId": item.productId });
+        const order = typeof orderQuery.session === "function"
+          ? await orderQuery.session(session)
+          : await orderQuery;
+
+        if (!order) {
+          const error = new Error(`Order item ${item.productId} was not found`);
+          error.statusCode = 404;
+          throw error;
+        }
+
+        let quantityToApply = Number(item.quantity || 0);
+        for (const orderItem of order.items) {
+          if (String(orderItem.productId) !== String(item.productId) || quantityToApply <= 0) {
+            continue;
+          }
+
+          const orderedQuantity = Number(orderItem.quantity || 0);
+          const alreadyReturnedQuantity = Number(orderItem.returnedQuantity || 0);
+          const returnableQuantity = Math.max(0, orderedQuantity - alreadyReturnedQuantity);
+          const appliedQuantity = Math.min(returnableQuantity, quantityToApply);
+
+          orderItem.returnedQuantity = alreadyReturnedQuantity + appliedQuantity;
+          if (orderItem.returnedQuantity >= orderedQuantity) {
+            orderItem.status = "returned";
+          }
+
+          quantityToApply -= appliedQuantity;
+        }
+
+        if (quantityToApply > 0) {
+          const error = new Error("Return quantity cannot exceed the remaining returnable quantity");
+          error.statusCode = 400;
+          throw error;
+        }
+
+        await order.save({ session });
+
         const restoredProduct = await Product.findOneAndUpdate(
           { productId: item.productId },
           { $inc: { quantityInStock: item.quantity } },
@@ -243,18 +314,6 @@ const approveReturnRequest = async (req, res) => {
 
         if (!restoredProduct) {
           const error = new Error(`Product ${item.productId} was not found`);
-          error.statusCode = 404;
-          throw error;
-        }
-
-        const updatedOrder = await Order.findOneAndUpdate(
-          { _id: returnReq.orderId, "items.productId": item.productId },
-          { $set: { "items.$.status": "returned" } },
-          { returnDocument: "after", session }
-        );
-
-        if (!updatedOrder) {
-          const error = new Error(`Order item ${item.productId} was not found`);
           error.statusCode = 404;
           throw error;
         }
@@ -272,6 +331,21 @@ const approveReturnRequest = async (req, res) => {
       }
 
       const statusCode = error.statusCode || 500;
+      if (statusCode === 500) {
+        try {
+          const latestRequestQuery = ReturnRequest.findById(req.params.id);
+          const latestRequest = latestRequestQuery && typeof latestRequestQuery.lean === "function"
+            ? await latestRequestQuery.lean()
+            : await latestRequestQuery;
+
+          if (latestRequest && latestRequest.status !== "pending") {
+            return res.status(400).json({ message: "Invalid request or already processed" });
+          }
+        } catch (_lookupError) {
+          // Preserve the original error response if the follow-up lookup also fails.
+        }
+      }
+
       return res.status(statusCode).json({
         message: statusCode === 500 ? "Server Error" : error.message,
         error: error.message,

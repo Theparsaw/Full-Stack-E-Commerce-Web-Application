@@ -428,6 +428,114 @@ describe("returnRequestController", () => {
     expect(ReturnRequest.create).not.toHaveBeenCalled();
   });
 
+  test("createReturnRequest rejects returning a fully requested item again", async () => {
+    Order.findOne.mockReturnValue({ lean: jest.fn().mockResolvedValue(buildOrder()) });
+    Delivery.findOne.mockReturnValue({ lean: jest.fn().mockResolvedValue({ status: "delivered" }) });
+    ReturnRequest.find.mockReturnValue({
+      lean: jest.fn().mockResolvedValue([
+        {
+          _id: "return-1",
+          orderId: "order-1",
+          status: "pending",
+          items: [{ productId: "p001", quantity: 1 }],
+        },
+      ]),
+    });
+
+    const req = {
+      user: { id: "user-1" },
+      body: { orderId: "order-1", items: [{ productId: "p001", quantity: 1 }], reason: "Same item again" },
+    };
+    const res = createRes();
+
+    await createReturnRequest(req, res);
+
+    expect(ReturnRequest.find).toHaveBeenCalledWith({ userId: "user-1", orderId: "order-1" });
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({
+      message: "Return quantity cannot exceed the remaining returnable quantity",
+    });
+    expect(ReturnRequest.create).not.toHaveBeenCalled();
+  });
+
+  test("createReturnRequest allows returning the remaining quantity for a partially returned item", async () => {
+    const order = buildOrder();
+    Order.findOne.mockReturnValue({ lean: jest.fn().mockResolvedValue(order) });
+    Delivery.findOne.mockReturnValue({ lean: jest.fn().mockResolvedValue({ status: "delivered" }) });
+    ReturnRequest.find.mockReturnValue({
+      lean: jest.fn().mockResolvedValue([
+        {
+          _id: "return-1",
+          orderId: "order-1",
+          status: "approved",
+          items: [{ productId: "p002", quantity: 1 }],
+        },
+      ]),
+    });
+    ReturnRequest.create.mockResolvedValue({
+      _id: "return-2",
+      orderId: "order-1",
+      items: [{ ...order.items[1], quantity: 1 }],
+      reason: "Second unit issue",
+      refundAmount: 40,
+      status: "pending",
+    });
+
+    const req = {
+      user: { id: "user-1" },
+      body: { orderId: "order-1", items: [{ productId: "p002", quantity: 1 }], reason: "Second unit issue" },
+    };
+    const res = createRes();
+
+    await createReturnRequest(req, res);
+
+    expect(ReturnRequest.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        items: [{ ...order.items[1], quantity: 1 }],
+        refundAmount: 40,
+      })
+    );
+    expect(res.status).toHaveBeenCalledWith(201);
+  });
+
+  test("createReturnRequest treats duplicate same-product order lines as one returnable item", async () => {
+    const order = buildOrder({
+      items: [
+        { productId: "p003", name: "USB Cable", unitPrice: 10, quantity: 1 },
+        { productId: "p003", name: "USB Cable", unitPrice: 10, quantity: 1 },
+        { productId: "p003", name: "USB Cable", unitPrice: 10, quantity: 1 },
+      ],
+      totalPrice: 30,
+    });
+
+    Order.findOne.mockReturnValue({ lean: jest.fn().mockResolvedValue(order) });
+    Delivery.findOne.mockReturnValue({ lean: jest.fn().mockResolvedValue({ status: "delivered" }) });
+    ReturnRequest.create.mockResolvedValue({
+      _id: "return-1",
+      orderId: "order-1",
+      items: [{ productId: "p003", name: "USB Cable", unitPrice: 10, quantity: 3 }],
+      reason: "All cables defective",
+      refundAmount: 30,
+      status: "pending",
+    });
+
+    const req = {
+      user: { id: "user-1" },
+      body: { orderId: "order-1", items: [{ productId: "p003", quantity: 3 }], reason: "All cables defective" },
+    };
+    const res = createRes();
+
+    await createReturnRequest(req, res);
+
+    expect(ReturnRequest.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        items: [{ productId: "p003", name: "USB Cable", unitPrice: 10, quantity: 3 }],
+        refundAmount: 30,
+      })
+    );
+    expect(res.status).toHaveBeenCalledWith(201);
+  });
+
   test("createReturnRequest allows a different item from an order with an existing return", async () => {
     const order = buildOrder();
     Order.findOne.mockReturnValue({ lean: jest.fn().mockResolvedValue(order) });

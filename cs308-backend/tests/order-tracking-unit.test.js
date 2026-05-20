@@ -43,6 +43,26 @@ describe("orderTracking utilities", () => {
     ]);
   });
 
+  test("serializeOrder merges duplicate same-product lines for customer order actions", () => {
+    const order = createOrder({
+      items: [
+        { productId: "p001", name: "Keyboard", quantity: 1, unitPrice: 80 },
+        { productId: "p001", name: "Keyboard", quantity: 2, unitPrice: 80, returnedQuantity: 1 },
+      ],
+    });
+
+    expect(serializeOrder(order).items).toEqual([
+      {
+        productId: "p001",
+        name: "Keyboard",
+        quantity: 3,
+        unitPrice: 80,
+        returnedQuantity: 1,
+        status: "active",
+      },
+    ]);
+  });
+
   test("uses valid delivery status from the delivery record", () => {
     const tracked = serializeTrackedOrder(createOrder(), { status: "out_for_delivery" });
 

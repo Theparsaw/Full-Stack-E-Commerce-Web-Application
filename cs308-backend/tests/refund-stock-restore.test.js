@@ -78,7 +78,7 @@ beforeAll(async () => {
 afterAll(async () => {
   await ReturnRequest.findByIdAndDelete(returnRequestId);
   await ReturnRequest.deleteMany({
-    reason: { $in: ["Missing product rollback", "Order item rollback", "Concurrent approval"] },
+    reason: { $in: ["Missing product rollback", "Order item rollback", "Concurrent approval", "Partial approval"] },
   });
   await Order.findByIdAndDelete(orderId);
   await Order.deleteMany({ cartId: { $regex: `restore-${uniqueSuffix}` } });
@@ -103,11 +103,64 @@ describe("Refund Approval and Stock Restore", () => {
 
     const updatedOrder = await Order.findById(orderId);
     expect(updatedOrder.items[0].status).toBe("returned");
+    expect(updatedOrder.items[0].returnedQuantity).toBe(returnQuantity);
 
     // 3. MOST IMPORTANT: Verify the stock went up!
     const product = await Product.findOne({ productId: testProductId });
     // Initial was 5, returned 2, new stock should be 7.
     expect(product.quantityInStock).toBe(initialStock + returnQuantity); 
+  });
+
+  test("Approving a partial refund tracks returned quantity without fully returning the order item", async () => {
+    const partialProductId = `p-restore-partial-${uniqueSuffix}`;
+    await Product.create({
+      productId: partialProductId,
+      categoryId: "electronics",
+      name: "Partial Refund Test Item",
+      model: "Restore-P",
+      serialNumber: `SN-RESTORE-PARTIAL-${uniqueSuffix}`,
+      description: "Testing partial return tracking",
+      quantityInStock: 4,
+      price: 35,
+      warrantyStatus: "1 year",
+      distributorInfo: "Test Distributor",
+    });
+
+    const partialOrder = await Order.create({
+      userId: new mongoose.Types.ObjectId().toString(),
+      cartId: `cart-restore-partial-${uniqueSuffix}`,
+      items: [{
+        productId: partialProductId,
+        name: "Partial Refund Test Item",
+        unitPrice: 35,
+        quantity: 3,
+      }],
+      totalPrice: 105,
+      status: "paid",
+      paidAt: new Date(),
+    });
+
+    const partialReturnReq = await ReturnRequest.create({
+      userId: new mongoose.Types.ObjectId(),
+      orderId: partialOrder._id,
+      items: [{ productId: partialProductId, name: "Partial Refund Test Item", unitPrice: 35, quantity: 1 }],
+      reason: "Partial approval",
+      refundAmount: 35,
+      status: "pending",
+    });
+
+    const res = await request(app)
+      .patch(`/api/returns/${partialReturnReq._id}/approve`)
+      .set("Authorization", `Bearer ${salesManagerToken}`);
+
+    expect(res.statusCode).toBe(200);
+
+    const updatedOrder = await Order.findById(partialOrder._id);
+    expect(updatedOrder.items[0].returnedQuantity).toBe(1);
+    expect(updatedOrder.items[0].status).toBe("active");
+
+    const product = await Product.findOne({ productId: partialProductId });
+    expect(product.quantityInStock).toBe(5);
   });
 
   test("Approving an already approved refund does not duplicate stock restoration", async () => {

@@ -1205,14 +1205,9 @@ const getReturnRequestsForOrder = (orderId) => {
   return returnRequests.value.filter((request) => request.orderId === orderId && request.status !== 'rejected')
 }
 
-const getReturnRequestForItem = (orderId, productId) => {
-  return getReturnRequestsForOrder(orderId)
-    .flatMap((request) => request.items || [])
-    .find((item) => item.productId === productId)
-}
-
-const getReturnedQuantityForItem = (orderId, productId) => {
-  return getReturnRequestsForOrder(orderId)
+const getPendingReturnQuantityForItem = (orderId, productId) => {
+  return returnRequests.value
+    .filter((request) => request.orderId === orderId && request.status === 'pending')
     .flatMap((request) => request.items || [])
     .filter((item) => item.productId === productId)
     .reduce((total, item) => total + Number(item.quantity || 0), 0)
@@ -1235,7 +1230,7 @@ const hasPendingReturnForItem = (orderId, productId) => {
 }
 
 const getRemainingReturnQuantity = (order, item) => {
-  return Math.max(0, Number(item.quantity || 0) - getReturnedQuantityForItem(order.id, item.productId))
+  return Math.max(0, Number(item.quantity || 0) - getApprovedReturnedQuantityForItem(order.id, item.productId))
 }
 
 const isItemFullyReturned = (order, item) => {
@@ -1274,11 +1269,13 @@ const getReturnEligibilityStatus = (order, item) => {
   if (!isWithinReturnWindow(order)) {
     return { eligible: false, label: 'Return window expired' }
   }
-  if (getRemainingReturnQuantity(order, item) <= 0) {
-    if (hasPendingReturnForItem(order.id, item.productId)) {
-      return { eligible: false, label: 'Return pending' }
+  if (hasPendingReturnForItem(order.id, item.productId)) {
+    return {
+      eligible: false,
+      label: `Return pending for ${getPendingReturnQuantityForItem(order.id, item.productId)} item(s)`,
     }
-
+  }
+  if (getRemainingReturnQuantity(order, item) <= 0) {
     const approvedQuantity = getApprovedReturnedQuantityForItem(order.id, item.productId)
     if (approvedQuantity >= Number(item.quantity || 0)) {
       return { eligible: false, label: 'Fully returned' }
@@ -1296,6 +1293,7 @@ const canRequestReturn = (order, item) => {
     order.status === 'paid' &&
     order.deliveryStatus === 'delivered' &&
     isWithinReturnWindow(order) &&
+    !hasPendingReturnForItem(order.id, item.productId) &&
     getRemainingReturnQuantity(order, item) > 0
 }
 
