@@ -390,7 +390,7 @@ import {
 
 import {
   getProducts,
-  updateProduct
+  updateProductPrice
 } from '../../api/productApi'
 
 import {
@@ -530,9 +530,7 @@ const updatePrice = async (product) => {
 
   try {
 
-    await updateProduct(product.productId, {
-      price: newPrice
-    })
+    await updateProductPrice(product.productId, newPrice)
 
     product.price = newPrice
 
