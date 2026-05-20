@@ -48,7 +48,7 @@ const cancelMyOrder = async (req, res) => {
       return res.status(404).json({ message: "Order not found" });
     }
 
-    if (order.userId !== req.user.id) {
+    if (String(order.userId) !== String(req.user.id)) {
       return res.status(403).json({ message: "Access denied" });
     }
 
