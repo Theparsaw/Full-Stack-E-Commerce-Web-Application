@@ -138,7 +138,7 @@ const handleLogin = async () => {
     if (userRole === 'sales_manager') {
       router.push('/admin/pricing')
     } else if (userRole === 'product_manager' || userRole === 'admin') {
-      router.push('/admin/products')
+      router.push('/admin/dashboard')
     } else if (shouldOpenCartAfterLogin) {
       router.push('/cart')
     } else {
