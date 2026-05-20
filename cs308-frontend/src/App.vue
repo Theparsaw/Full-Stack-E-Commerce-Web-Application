@@ -45,6 +45,7 @@
           </select>
 
           <router-link
+            v-if="showShoppingActions"
             to="/cart"
             class="relative flex items-center gap-2 px-4 py-2.5 rounded-xl border border-orange-200 bg-white/72 text-slate-800 backdrop-blur hover:border-orange-300 hover:bg-white/90 transition"
           >
@@ -301,6 +302,10 @@ const activeSort = computed(() =>
 
 const showHeaderWishlist = computed(() =>
   authStore.isLoggedIn && authStore.role === 'customer'
+)
+
+const showShoppingActions = computed(() =>
+  !authStore.isLoggedIn || authStore.role === 'customer'
 )
 
 const adminHomeRoute = computed(() => {
