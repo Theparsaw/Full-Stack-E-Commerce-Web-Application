@@ -56,6 +56,7 @@ describe("returnRequestController", () => {
         orderId: "order-1",
         items: [{ productId: "p001", name: "Keyboard", unitPrice: 80, quantity: 1 }],
         reason: "Damaged",
+        photoUrls: ["/uploads/return-photos/return-1.jpg"],
         refundAmount: 80,
         status: "pending",
         resolvedAt: null,
@@ -81,6 +82,7 @@ describe("returnRequestController", () => {
           orderId: "order-1",
           items: requests[0].items,
           reason: "Damaged",
+          photoUrls: ["/uploads/return-photos/return-1.jpg"],
           refundAmount: 80,
           status: "pending",
           resolvedAt: null,
@@ -132,8 +134,46 @@ describe("returnRequestController", () => {
       orderId: "order-1",
       items: [{ ...order.items[1], quantity: 1 }],
       reason: "Wrong product",
+      photoUrls: [],
       refundAmount: 40,
     });
+    expect(res.status).toHaveBeenCalledWith(201);
+  });
+
+  test("createReturnRequest stores uploaded return photo URLs", async () => {
+    const order = buildOrder();
+
+    Order.findOne.mockReturnValue({ lean: jest.fn().mockResolvedValue(order) });
+    Delivery.findOne.mockReturnValue({ lean: jest.fn().mockResolvedValue({ status: "delivered" }) });
+    ReturnRequest.create.mockResolvedValue({
+      _id: "return-1",
+      orderId: "order-1",
+      items: [{ ...order.items[1], quantity: 1 }],
+      reason: "Box was damaged",
+      photoUrls: ["/uploads/return-photos/return-a.jpg"],
+      refundAmount: 40,
+      status: "pending",
+      resolvedAt: null,
+    });
+
+    const req = {
+      user: { id: "user-1" },
+      body: {
+        orderId: "order-1",
+        items: JSON.stringify([{ productId: "p002", quantity: 1 }]),
+        reason: "Box was damaged",
+      },
+      files: [{ filename: "return-a.jpg" }],
+    };
+    const res = createRes();
+
+    await createReturnRequest(req, res);
+
+    expect(ReturnRequest.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        photoUrls: ["/uploads/return-photos/return-a.jpg"],
+      })
+    );
     expect(res.status).toHaveBeenCalledWith(201);
   });
 

@@ -412,6 +412,16 @@
               class="mt-6 rounded-2xl border border-orange-100 bg-orange-50 p-5"
               @submit.prevent="handleSubmitReturnRequest(order)"
             >
+              <input
+                ref="returnPhotoInput"
+                type="file"
+                accept="image/*"
+                multiple
+                class="hidden"
+                :disabled="submittingReturn"
+                @change="handleReturnPhotosSelected"
+              />
+
               <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                 <div>
                   <h4 class="font-semibold text-gray-900">Return Request</h4>
@@ -483,6 +493,46 @@
                   placeholder="Enter the reason for this return"
                   :disabled="submittingReturn"
                 />
+              </div>
+
+              <div class="mt-4">
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p class="text-sm font-semibold uppercase tracking-wide text-gray-500">Photos</p>
+                    <p class="text-sm text-gray-600">Attach up to 5 product photos. JPG, PNG, or other image files are supported.</p>
+                  </div>
+                  <button
+                    type="button"
+                    class="inline-flex items-center justify-center rounded-xl border border-orange-200 bg-white px-4 py-2 text-sm font-semibold text-orange-700 transition hover:bg-orange-50 disabled:cursor-not-allowed disabled:opacity-60"
+                    :disabled="submittingReturn || returnForm.photos.length >= 5"
+                    @click="openReturnPhotoPicker"
+                  >
+                    Add Photos
+                  </button>
+                </div>
+
+                <div v-if="returnForm.photos.length" class="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-5">
+                  <div
+                    v-for="photo in returnForm.photos"
+                    :key="photo.preview"
+                    class="relative overflow-hidden rounded-xl border border-orange-100 bg-white"
+                  >
+                    <img
+                      :src="photo.preview"
+                      :alt="photo.file.name"
+                      class="aspect-square w-full object-cover"
+                    />
+                    <button
+                      type="button"
+                      class="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-white text-sm font-bold text-gray-700 shadow hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-60"
+                      :disabled="submittingReturn"
+                      @click="removeReturnPhoto(photo.preview)"
+                    >
+                      <span aria-hidden="true">&times;</span>
+                      <span class="sr-only">Remove photo</span>
+                    </button>
+                  </div>
+                </div>
               </div>
 
               <p v-if="returnFormError" class="mt-3 text-sm font-medium text-red-600">{{ returnFormError }}</p>
@@ -664,6 +714,22 @@
             </div>
 
             <p class="mt-4 text-sm text-gray-600">{{ request.reason }}</p>
+            <div v-if="request.photoUrls?.length" class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-5">
+              <a
+                v-for="photoUrl in request.photoUrls"
+                :key="photoUrl"
+                :href="resolveAssetUrl(photoUrl)"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="block overflow-hidden rounded-xl border border-gray-100 bg-gray-50"
+              >
+                <img
+                  :src="resolveAssetUrl(photoUrl)"
+                  alt="Return request photo"
+                  class="aspect-square w-full object-cover transition hover:opacity-90"
+                />
+              </a>
+            </div>
             <p
               v-if="request.status === 'rejected' && request.managerNotes"
               class="mt-3 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700"
@@ -797,7 +863,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getProfile, resolveAssetUrl, updateProfile } from '../api/authApi'
 import { downloadInvoice, getMyInvoices } from '../api/invoiceApi'
@@ -834,6 +900,7 @@ const cancellingOrderId = ref('')
 const submittingReturn = ref(false)
 const returnFormError = ref('')
 const photoInput = ref(null)
+const returnPhotoInput = ref(null)
 const selectedPhotoFile = ref(null)
 const selectedPhotoPreview = ref('')
 const shouldRemovePhoto = ref(false)
@@ -854,6 +921,7 @@ const returnForm = ref({
   orderId: '',
   items: [],
   reason: '',
+  photos: [],
 })
 
 const tabs = computed(() => {
@@ -1168,20 +1236,27 @@ const canRequestReturn = (order, item) => {
 }
 
 const startReturnRequest = (order, item) => {
+  clearReturnPhotoPreviews()
   returnFormError.value = ''
   returnForm.value = {
     orderId: order.id,
     items: [{ productId: item.productId, quantity: 1 }],
     reason: '',
+    photos: [],
   }
 }
 
 const cancelReturnRequest = () => {
+  clearReturnPhotoPreviews()
   returnFormError.value = ''
   returnForm.value = {
     orderId: '',
     items: [],
     reason: '',
+    photos: [],
+  }
+  if (returnPhotoInput.value) {
+    returnPhotoInput.value.value = ''
   }
 }
 
@@ -1263,6 +1338,62 @@ const getReturnFormRefund = (order) => {
   }, 0)
 }
 
+const openReturnPhotoPicker = () => {
+  returnPhotoInput.value?.click()
+}
+
+const clearReturnPhotoPreviews = () => {
+  returnForm.value.photos.forEach((photo) => {
+    window.URL.revokeObjectURL(photo.preview)
+  })
+}
+
+const handleReturnPhotosSelected = (event) => {
+  returnFormError.value = ''
+  const files = Array.from(event.target.files || [])
+
+  if (!files.length) {
+    return
+  }
+
+  const remainingSlots = 5 - returnForm.value.photos.length
+
+  if (files.length > remainingSlots) {
+    returnFormError.value = `You can attach up to 5 photos per return request.`
+  }
+
+  const validPhotos = []
+
+  for (const file of files.slice(0, remainingSlots)) {
+    if (!file.type.startsWith('image/')) {
+      returnFormError.value = 'Only image files can be attached.'
+      continue
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      returnFormError.value = 'Each return photo must be smaller than 5MB.'
+      continue
+    }
+
+    validPhotos.push({
+      file,
+      preview: window.URL.createObjectURL(file),
+    })
+  }
+
+  returnForm.value.photos = [...returnForm.value.photos, ...validPhotos]
+  event.target.value = ''
+}
+
+const removeReturnPhoto = (preview) => {
+  const photoToRemove = returnForm.value.photos.find((photo) => photo.preview === preview)
+  if (photoToRemove) {
+    window.URL.revokeObjectURL(photoToRemove.preview)
+  }
+
+  returnForm.value.photos = returnForm.value.photos.filter((photo) => photo.preview !== preview)
+}
+
 const handleSubmitReturnRequest = async (order) => {
   returnFormError.value = ''
 
@@ -1295,14 +1426,19 @@ const handleSubmitReturnRequest = async (order) => {
   submittingReturn.value = true
 
   try {
-    await submitReturnRequest({
-      orderId: order.id,
-      items: returnForm.value.items.map((item) => ({
+    const formData = new FormData()
+    formData.append('orderId', order.id)
+    formData.append('reason', reason)
+    formData.append('items', JSON.stringify(returnForm.value.items.map((item) => ({
         productId: item.productId,
         quantity: Number(item.quantity),
-      })),
-      reason,
+      }))))
+
+    returnForm.value.photos.forEach((photo) => {
+      formData.append('photos', photo.file)
     })
+
+    await submitReturnRequest(formData)
     cancelReturnRequest()
     await fetchReturnRequests()
   } catch (err) {
@@ -1586,4 +1722,5 @@ watch(
 )
 
 onMounted(fetchProfile)
+onUnmounted(clearReturnPhotoPreviews)
 </script>

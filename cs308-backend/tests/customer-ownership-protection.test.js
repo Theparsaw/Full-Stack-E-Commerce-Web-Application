@@ -224,6 +224,7 @@ describe("Customer data ownership protection", () => {
         }),
       ],
       reason: "Product is defective",
+      photoUrls: [],
       refundAmount: 1000,
     });
 

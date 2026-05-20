@@ -1,3 +1,4 @@
+const fs = require("fs");
 const mongoose = require("mongoose");
 const ReturnRequest = require("../models/ReturnRequest");
 const Order = require("../models/Order");
@@ -10,6 +11,15 @@ const normalizeRequestedReturnItems = (items, itemProductIds) => {
       productId: String(item?.productId || "").trim(),
       quantity: item?.quantity,
     }));
+  }
+
+  if (typeof items === "string") {
+    try {
+      const parsedItems = JSON.parse(items);
+      return normalizeRequestedReturnItems(parsedItems, itemProductIds);
+    } catch (_error) {
+      return [];
+    }
   }
 
   if (Array.isArray(itemProductIds)) {
@@ -31,6 +41,7 @@ const serializeReturnRequest = (request) => {
 
   if (request.items !== undefined) serialized.items = request.items;
   if (request.reason !== undefined) serialized.reason = request.reason;
+  if (request.photoUrls !== undefined) serialized.photoUrls = request.photoUrls;
   if (request.refundAmount !== undefined) serialized.refundAmount = request.refundAmount;
   if (request.resolvedAt !== undefined) serialized.resolvedAt = request.resolvedAt;
   if (request.createdAt !== undefined) serialized.createdAt = request.createdAt;
@@ -47,6 +58,12 @@ const findExistingReturnRequests = async (userId, orderId) => {
   return typeof query.lean === "function" ? query.lean() : query;
 };
 
+const cleanupUploadedReturnPhotos = async (files = []) => {
+  await Promise.all(
+    files.map((file) => fs.promises.unlink(file.path).catch(() => null))
+  );
+};
+
 const getMyReturnRequests = async (req, res) => {
   try {
     const returnRequests = await ReturnRequest.find({ userId: req.user.id }).sort({ createdAt: -1 }).lean();
@@ -57,20 +74,27 @@ const getMyReturnRequests = async (req, res) => {
 };
 
 const createReturnRequest = async (req, res) => {
+  const uploadedFiles = Array.isArray(req.files) ? req.files : [];
+  const fail = async (statusCode, payload) => {
+    await cleanupUploadedReturnPhotos(uploadedFiles);
+    return res.status(statusCode).json(payload);
+  };
+
   try {
     const { orderId, items, itemProductIds, reason } = req.body;
     const requestedItems = normalizeRequestedReturnItems(items, itemProductIds);
+    const photoUrls = uploadedFiles.map((file) => `/uploads/return-photos/${file.filename}`);
 
     const order = await Order.findOne({ _id: orderId, userId: req.user.id, status: "paid" }).lean();
-    if (!order) return res.status(404).json({ message: "Order not found" });
+    if (!order) return fail(404, { message: "Order not found" });
 
     const delivery = await Delivery.findOne({ orderId }).lean();
     if (!delivery || delivery.status !== "delivered") {
-      return res.status(400).json({ message: "Returns can only be requested after delivery" });
+      return fail(400, { message: "Returns can only be requested after delivery" });
     }
 
     if (requestedItems.length === 0) {
-      return res.status(400).json({ message: "Select at least one item to return" });
+      return fail(400, { message: "Select at least one item to return" });
     }
 
     let refundAmount = 0;
@@ -90,28 +114,28 @@ const createReturnRequest = async (req, res) => {
       const requestedQuantity = Number(requestedItem.quantity);
 
       if (!requestedProductId) {
-        return res.status(400).json({ message: "Each return item must include a product ID" });
+        return fail(400, { message: "Each return item must include a product ID" });
       }
 
       if (seenProductIds.has(requestedProductId)) {
-        return res.status(400).json({ message: "Duplicate return items are not allowed" });
+        return fail(400, { message: "Duplicate return items are not allowed" });
       }
       seenProductIds.add(requestedProductId);
 
       if (!Number.isInteger(requestedQuantity) || requestedQuantity <= 0) {
-        return res.status(400).json({ message: "Return quantity must be a positive integer" });
+        return fail(400, { message: "Return quantity must be a positive integer" });
       }
 
       const orderItem = order.items.find(i => String(i.productId) === requestedProductId);
-      if (!orderItem) return res.status(400).json({ message: "Selected return items are not part of this order" });
+      if (!orderItem) return fail(400, { message: "Selected return items are not part of this order" });
 
       if (requestedQuantity > Number(orderItem.quantity)) {
-        return res.status(400).json({ message: "Return quantity cannot exceed the ordered quantity" });
+        return fail(400, { message: "Return quantity cannot exceed the ordered quantity" });
       }
 
       const alreadyReturnedQuantity = returnedQuantityByProductId[requestedProductId] || 0;
       if (alreadyReturnedQuantity + requestedQuantity > Number(orderItem.quantity)) {
-        return res.status(400).json({ message: "Return quantity cannot exceed the remaining returnable quantity" });
+        return fail(400, { message: "Return quantity cannot exceed the remaining returnable quantity" });
       }
       
       refundAmount += orderItem.unitPrice * requestedQuantity;
@@ -119,11 +143,12 @@ const createReturnRequest = async (req, res) => {
     }
 
     const returnRequest = await ReturnRequest.create({
-      userId: req.user.id, orderId, items: processedItems, reason: String(reason || "").trim(), refundAmount,
+      userId: req.user.id, orderId, items: processedItems, reason: String(reason || "").trim(), photoUrls, refundAmount,
     });
 
     return res.status(201).json(returnRequest);
   } catch (error) {
+    await cleanupUploadedReturnPhotos(uploadedFiles);
     return res.status(500).json({ message: "Server Error", error: error.message });
   }
 };

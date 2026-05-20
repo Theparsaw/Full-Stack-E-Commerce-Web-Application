@@ -27,6 +27,23 @@
           <li v-for="item in req.items" :key="item.productId">{{ item.quantity }}x {{ item.name }}</li>
         </ul>
 
+        <div v-if="req.photoUrls?.length" class="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-5">
+          <a
+            v-for="photoUrl in req.photoUrls"
+            :key="photoUrl"
+            :href="resolveAssetUrl(photoUrl)"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="block overflow-hidden rounded-lg border border-gray-200 bg-gray-50"
+          >
+            <img
+              :src="resolveAssetUrl(photoUrl)"
+              alt="Return request photo"
+              class="aspect-square w-full object-cover transition hover:opacity-90"
+            />
+          </a>
+        </div>
+
         <div class="flex justify-between items-end border-t pt-4">
           <div>
             <p v-if="req.resolvedAt" class="text-xs text-gray-500 mb-1">
@@ -49,6 +66,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { getMyReturnRequests } from '../api/returnApi'
+import { resolveAssetUrl } from '../api/authApi'
 
 const requests = ref([])
 const isLoading = ref(true)

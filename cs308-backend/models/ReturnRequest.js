@@ -52,6 +52,14 @@ const returnRequestSchema = new mongoose.Schema(
       trim: true,
       maxlength: 500,
     },
+    photoUrls: {
+      type: [String],
+      default: [],
+      validate: {
+        validator: (urls) => Array.isArray(urls) && urls.length <= 5,
+        message: "A return request can include at most 5 photos",
+      },
+    },
     refundAmount: {
       type: Number,
       required: true,

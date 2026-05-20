@@ -29,6 +29,7 @@
             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Customer</th>
             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Items</th>
             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reason</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Photos</th>
             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
             <th v-if="currentTab === 'pending'" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Actions</th>
             <th v-if="currentTab === 'history'" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Resolution</th>
@@ -46,6 +47,25 @@
               </ul>
             </td>
             <td class="px-6 py-4 text-sm text-gray-700 max-w-xs truncate" :title="req.reason">{{ req.reason }}</td>
+            <td class="px-6 py-4">
+              <div v-if="req.photoUrls?.length" class="flex flex-wrap gap-2">
+                <a
+                  v-for="photoUrl in req.photoUrls"
+                  :key="photoUrl"
+                  :href="resolveAssetUrl(photoUrl)"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="block h-14 w-14 overflow-hidden rounded border border-gray-200 bg-gray-50"
+                >
+                  <img
+                    :src="resolveAssetUrl(photoUrl)"
+                    alt="Return evidence"
+                    class="h-full w-full object-cover transition hover:opacity-90"
+                  />
+                </a>
+              </div>
+              <span v-else class="text-sm text-gray-400">No photos</span>
+            </td>
             <td class="px-6 py-4 text-sm font-semibold text-gray-900">${{ req.refundAmount.toFixed(2) }}</td>
             
             <td v-if="currentTab === 'pending'" class="px-6 py-4 text-center space-x-2">
@@ -83,6 +103,7 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue'
 import { getPendingReturnRequests, getReturnHistory, approveReturnRequest, rejectReturnRequest } from '../../api/returnApi'
+import { resolveAssetUrl } from '../../api/authApi'
 
 const currentTab = ref('pending')
 const requests = ref([])

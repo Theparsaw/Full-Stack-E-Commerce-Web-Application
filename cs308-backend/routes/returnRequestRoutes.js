@@ -10,6 +10,7 @@ const {
 } = require("../controllers/returnRequestController");
 
 const { authMiddleware, authorize } = require("../middleware/authMiddleware");
+const { uploadReturnPhotos } = require("../middleware/uploadMiddleware");
 
 const router = express.Router();
 
@@ -20,7 +21,7 @@ router.use(authMiddleware); // All routes require login
 // ==========================================
 router.get("/my-returns", authorize("customer"), getMyReturnRequests);
 router.get("/", authorize("customer"), getMyReturnRequests);
-router.post("/", authorize("customer"), createReturnRequest);
+router.post("/", authorize("customer"), uploadReturnPhotos.array("photos", 5), createReturnRequest);
 
 // ==========================================
 // Sales Manager Admin Routes
