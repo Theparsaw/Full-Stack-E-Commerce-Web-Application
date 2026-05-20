@@ -22,6 +22,60 @@ afterAll(async () => {
 });
 
 describe("Product API Endpoints (safe, non-polluting tests)", () => {
+  test("POST /api/products is denied for sales managers", async () => {
+  const salesLoginRes = await request(app).post("/api/auth/login").send({
+    email: "salesmanager@store.com",
+    password: "sales123",
+  });
+
+    const res = await request(app)
+      .post("/api/products")
+      .set("Authorization", `Bearer ${salesLoginRes.body.token}`)
+      .send({
+        productId: "p-sales-blocked",
+        categoryId: "cat1",
+        name: "Blocked Product",
+        model: "Blocked Model",
+        serialNumber: "SALES-BLOCKED-001",
+        description: "Sales manager should not create products",
+        quantityInStock: 1,
+        price: 10,
+        warrantyStatus: "1 year warranty",
+        distributorInfo: "Test Distributor",
+      });
+
+    expect(res.statusCode).toBe(403);
+    expect(res.body.code).toBe("FORBIDDEN");
+  });
+
+  test("PUT /api/products/:id is denied for sales managers", async () => {
+    const salesLoginRes = await request(app).post("/api/auth/login").send({
+      email: "salesmanager@store.com",
+      password: "sales123",
+    });
+
+    const res = await request(app)
+      .put("/api/products/p001")
+      .set("Authorization", `Bearer ${salesLoginRes.body.token}`)
+      .send({ name: "Should Not Update" });
+
+    expect(res.statusCode).toBe(403);
+    expect(res.body.code).toBe("FORBIDDEN");
+  });
+
+  test("DELETE /api/products/:id is denied for sales managers", async () => {
+    const salesLoginRes = await request(app).post("/api/auth/login").send({
+      email: "salesmanager@store.com",
+      password: "sales123",
+    });
+
+    const res = await request(app)
+      .delete("/api/products/p001")
+      .set("Authorization", `Bearer ${salesLoginRes.body.token}`);
+
+    expect(res.statusCode).toBe(403);
+    expect(res.body.code).toBe("FORBIDDEN");
+  });
   // GET /api/products
   test("GET /api/products should return 200 and an array", async () => {
     const res = await request(app).get("/api/products");
