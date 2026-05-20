@@ -476,6 +476,53 @@ const updateProduct = asyncHandler(async (req, res) => {
     product: updatedProduct,
   });
 });
+const updateProductPrice = asyncHandler(async (req, res) => {
+  const allowedFields = ["price"];
+  const receivedFields = Object.keys(req.body);
+
+  const hasInvalidField = receivedFields.some(
+    (field) => !allowedFields.includes(field)
+  );
+
+  if (hasInvalidField) {
+    throw new AppError(
+      "Only price can be updated from this endpoint",
+      400,
+      "PRICE_ONLY_ENDPOINT"
+    );
+  }
+
+  const { price } = req.body;
+
+  if (price === undefined || price === null || price === "") {
+    throw new AppError("Price is required", 400, "PRICE_REQUIRED");
+  }
+
+  const numericPrice = Number(price);
+
+  if (Number.isNaN(numericPrice) || numericPrice < 0) {
+    throw new AppError(
+      "Price must be a non-negative number",
+      400,
+      "INVALID_PRICE"
+    );
+  }
+
+  const product = await Product.findOne({ productId: req.params.id });
+
+  if (!product) {
+    throw new AppError("Product not found", 404, "PRODUCT_NOT_FOUND");
+  }
+
+  product.price = numericPrice;
+
+  const updatedProduct = await product.save();
+
+  res.status(200).json({
+    message: "Product price updated successfully",
+    product: updatedProduct,
+  });
+});
 
 const deleteProduct = asyncHandler(async (req, res) => {
   const product = await Product.findOne({ productId: req.params.id });
@@ -496,5 +543,6 @@ module.exports = {
   getAllProducts,
   getProductById,
   updateProduct,
+  updateProductPrice,
   deleteProduct,
 };

@@ -56,6 +56,8 @@ export const getProducts = (search = "", sort = "") => {
 export const getProductById = (id) => api.get(`/products/${id}`);
 export const createProduct = (data) => api.post("/products", data);
 export const updateProduct = (id, data) => api.put(`/products/${id}`, data);
+export const updateProductPrice = (id, price) =>
+  api.put(`/products/${id}/price`, { price });
 export const deleteProduct = (id) => api.delete(`/products/${id}`);
 
 export default api;
