@@ -109,9 +109,9 @@ describe("Complete Refund Lifecycle", () => {
     expect(res.body.success).toBe(true);
   });
 
-  test("Step 3: Customer views their history and sees it approved", async () => {
+  test("Step 3: Customer views their history through the frontend route and sees it approved", async () => {
     const res = await request(app)
-      .get("/api/returns")
+      .get("/api/returns/my-returns")
       .set("Authorization", `Bearer ${customerToken}`);
 
     expect(res.statusCode).toBe(200);
@@ -120,5 +120,22 @@ describe("Complete Refund Lifecycle", () => {
     const myRequest = res.body.returnRequests[0];
     expect(myRequest.status).toBe("approved");
     expect(myRequest.refundAmount).toBe(100);
+  });
+
+  test("Step 4: Customer history root alias returns the same requests", async () => {
+    const res = await request(app)
+      .get("/api/returns")
+      .set("Authorization", `Bearer ${customerToken}`);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body.returnRequests).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: createdRequestId,
+          status: "approved",
+          refundAmount: 100,
+        }),
+      ])
+    );
   });
 });
