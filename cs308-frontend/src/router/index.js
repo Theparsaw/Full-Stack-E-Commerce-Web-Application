@@ -53,7 +53,7 @@ const routes = [
   { path: '/login', component: LoginPage },
   { path: '/register', component: RegisterPage },
   { path: '/profile', component: ProfilePage, meta: { requiresAuth: true } },
-  { path: "/notifications", component: NotificationsPage, },
+  { path: "/notifications", component: NotificationsPage, meta: { requiresAuth: true } },
   { path: '/my-returns', component: MyReturnsPage, meta: { requiresAuth: true } },
 
   {
@@ -157,6 +157,14 @@ router.beforeEach((to, from, next) => {
     const allowedRoles = to.meta.roles || []
 
     if (allowedRoles.length > 0 && !allowedRoles.includes(authStore.role)) {
+      if (authStore.role === 'sales_manager') {
+        return next('/admin/pricing')
+      }
+
+      if (authStore.role === 'product_manager') {
+        return next('/admin/dashboard')
+      }
+
       return next('/')
     }
   }
