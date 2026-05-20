@@ -35,7 +35,11 @@ describe("ReturnRequest Model Validation", () => {
     });
     expect(rr.status).toBe("pending");
     expect(rr.refundAmount).toBe(99.99);
+    expect(rr.managerNotes).toBe("");
+    expect(rr.rejectionReason).toBe("");
+    expect(rr.reviewedBy).toBeNull();
     expect(rr.resolvedAt).toBeNull();
+    expect(rr.resolutionDate).toBeNull();
   });
 
   test("Fails without userId", async () => {
@@ -91,7 +95,7 @@ describe("ReturnRequest Model Validation", () => {
     await expect(rr.save()).rejects.toThrow();
   });
 
-  test("Prevents duplicate return request for same user and order", async () => {
+  test("Allows multiple return requests for the same user and order", async () => {
     const dup = new ReturnRequest({
       userId: testUserId,
       orderId: testOrderId,
@@ -99,7 +103,11 @@ describe("ReturnRequest Model Validation", () => {
       reason: "Duplicate request test",
       refundAmount: 99.99,
     });
-    await expect(dup.save()).rejects.toThrow();
+    await expect(dup.save()).resolves.toMatchObject({
+      userId: testUserId,
+      orderId: testOrderId,
+      status: "pending",
+    });
   });
 
   test("Has timestamps after creation", async () => {

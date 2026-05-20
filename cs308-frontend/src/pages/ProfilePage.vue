@@ -1218,6 +1218,22 @@ const getReturnedQuantityForItem = (orderId, productId) => {
     .reduce((total, item) => total + Number(item.quantity || 0), 0)
 }
 
+const getApprovedReturnedQuantityForItem = (orderId, productId) => {
+  return returnRequests.value
+    .filter((request) => request.orderId === orderId && request.status === 'approved')
+    .flatMap((request) => request.items || [])
+    .filter((item) => item.productId === productId)
+    .reduce((total, item) => total + Number(item.quantity || 0), 0)
+}
+
+const hasPendingReturnForItem = (orderId, productId) => {
+  return returnRequests.value.some((request) =>
+    request.orderId === orderId &&
+    request.status === 'pending' &&
+    (request.items || []).some((item) => item.productId === productId)
+  )
+}
+
 const getRemainingReturnQuantity = (order, item) => {
   return Math.max(0, Number(item.quantity || 0) - getReturnedQuantityForItem(order.id, item.productId))
 }
@@ -1259,6 +1275,15 @@ const getReturnEligibilityStatus = (order, item) => {
     return { eligible: false, label: 'Return window expired' }
   }
   if (getRemainingReturnQuantity(order, item) <= 0) {
+    if (hasPendingReturnForItem(order.id, item.productId)) {
+      return { eligible: false, label: 'Return pending' }
+    }
+
+    const approvedQuantity = getApprovedReturnedQuantityForItem(order.id, item.productId)
+    if (approvedQuantity >= Number(item.quantity || 0)) {
+      return { eligible: false, label: 'Fully returned' }
+    }
+
     return { eligible: false, label: 'Fully returned' }
   }
 
@@ -1285,6 +1310,14 @@ const startReturnRequest = (order, item) => {
   }
 }
 
+const getReturnPhotoInput = () => {
+  if (Array.isArray(returnPhotoInput.value)) {
+    return returnPhotoInput.value.find(Boolean) || null
+  }
+
+  return returnPhotoInput.value
+}
+
 const cancelReturnRequest = () => {
   clearReturnPhotoPreviews()
   returnFormError.value = ''
@@ -1294,8 +1327,9 @@ const cancelReturnRequest = () => {
     reason: '',
     photos: [],
   }
-  if (returnPhotoInput.value) {
-    returnPhotoInput.value.value = ''
+  const input = getReturnPhotoInput()
+  if (input) {
+    input.value = ''
   }
 }
 
@@ -1378,7 +1412,11 @@ const getReturnFormRefund = (order) => {
 }
 
 const openReturnPhotoPicker = () => {
-  returnPhotoInput.value?.click()
+  if (submittingReturn.value || returnForm.value.photos.length >= 5) {
+    return
+  }
+
+  getReturnPhotoInput()?.click()
 }
 
 const clearReturnPhotoPreviews = () => {

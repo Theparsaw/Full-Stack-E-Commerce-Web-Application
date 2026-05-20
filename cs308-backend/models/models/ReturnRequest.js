@@ -36,6 +36,7 @@ const returnRequestSchema = new mongoose.Schema(
 
     userId: {
       type: String,
+      ref: "User",
       required: true,
     },
 
@@ -61,6 +62,35 @@ const returnRequestSchema = new mongoose.Schema(
       type: String,
       enum: ["pending", "approved", "rejected"],
       default: "pending",
+    },
+
+    managerNotes: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+
+    rejectionReason: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+
+    reviewedBy: {
+      type: String,
+      ref: "User",
+      trim: true,
+      default: null,
+    },
+
+    resolvedAt: {
+      type: Date,
+      default: null,
+    },
+
+    resolutionDate: {
+      type: Date,
+      default: null,
     },
   },
   {

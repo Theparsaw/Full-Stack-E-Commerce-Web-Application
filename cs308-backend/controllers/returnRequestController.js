@@ -47,13 +47,19 @@ const serializeReturnRequest = (request) => {
   if (request.photoUrls !== undefined) serialized.photoUrls = request.photoUrls;
   if (request.refundAmount !== undefined) serialized.refundAmount = request.refundAmount;
   if (request.resolvedAt !== undefined) serialized.resolvedAt = request.resolvedAt;
+  if (request.resolutionDate !== undefined) serialized.resolutionDate = request.resolutionDate;
   if (request.createdAt !== undefined) serialized.createdAt = request.createdAt;
   if (request.updatedAt !== undefined) serialized.updatedAt = request.updatedAt;
   if (request.managerNotes !== undefined) serialized.managerNotes = request.managerNotes;
+  if (request.rejectionReason !== undefined) serialized.rejectionReason = request.rejectionReason;
   if (request.reviewedBy !== undefined) serialized.reviewedBy = request.reviewedBy;
 
   return serialized;
 };
+
+const getReviewerId = (req) => String(req.user?.id || "").trim();
+
+const normalizeManagerNotes = (managerNotes) => String(managerNotes || "").trim();
 
 const findExistingReturnRequests = async (userId, orderId) => {
   const query = ReturnRequest.find({ userId, orderId });
@@ -180,15 +186,18 @@ const getPendingReturnRequests = async (req, res) => {
 
 const rejectReturnRequest = async (req, res) => {
   try {
-    const { managerNotes } = req.body;
+    const managerNotes = normalizeManagerNotes(req.body?.managerNotes);
+    const resolvedAt = new Date();
     const returnReq = await ReturnRequest.findById(req.params.id);
 
     if (!returnReq || returnReq.status !== "pending") return res.status(400).json({ message: "Invalid request" });
 
     returnReq.status = "rejected";
-    returnReq.managerNotes = managerNotes || "";
-    returnReq.resolvedAt = new Date();
-    returnReq.reviewedBy = req.user.id;
+    returnReq.managerNotes = managerNotes;
+    returnReq.rejectionReason = managerNotes;
+    returnReq.resolvedAt = resolvedAt;
+    returnReq.resolutionDate = resolvedAt;
+    returnReq.reviewedBy = getReviewerId(req);
     await returnReq.save();
 
     return res.status(200).json({ success: true, data: returnReq });
@@ -213,7 +222,8 @@ const approveReturnRequest = async (req, res) => {
           $set: {
             status: "approved",
             resolvedAt,
-            reviewedBy: req.user.id,
+            resolutionDate: resolvedAt,
+            reviewedBy: getReviewerId(req),
           },
         },
         { returnDocument: "after", session }
@@ -277,6 +287,7 @@ const getReturnHistory = async (req, res) => {
     // Fetch all requests that are NO LONGER pending
     const history = await ReturnRequest.find({ status: { $ne: "pending" } })
       .populate("userId", "name email")
+      .populate("reviewedBy", "name email")
       .sort({ resolvedAt: -1 }); // Newest first
 
     return res.status(200).json({

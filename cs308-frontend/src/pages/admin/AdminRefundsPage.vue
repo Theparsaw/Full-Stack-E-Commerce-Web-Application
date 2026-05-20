@@ -22,17 +22,17 @@
       No {{ currentTab }} return requests found.
     </div>
 
-    <div v-else class="bg-white shadow rounded-lg overflow-hidden">
-      <table class="min-w-full divide-y divide-gray-200">
+    <div v-else class="overflow-hidden rounded-lg bg-white shadow">
+      <table class="w-full table-fixed divide-y divide-gray-200">
         <thead class="bg-gray-50">
           <tr>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Customer</th>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Items</th>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reason</th>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Photos</th>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
-            <th v-if="currentTab === 'pending'" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Actions</th>
-            <th v-if="currentTab === 'history'" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Resolution</th>
+            <th class="w-[24%] px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Customer</th>
+            <th class="w-[14%] px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Items</th>
+            <th class="w-[23%] px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reason</th>
+            <th class="w-[13%] px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Photos</th>
+            <th class="w-[11%] px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
+            <th v-if="currentTab === 'pending'" class="w-[15%] px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Actions</th>
+            <th v-if="currentTab === 'history'" class="w-[15%] px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Resolution</th>
           </tr>
         </thead>
         <tbody class="bg-white divide-y divide-gray-200">
@@ -68,18 +68,23 @@
             </td>
             <td class="px-6 py-4 text-sm font-semibold text-gray-900">${{ req.refundAmount.toFixed(2) }}</td>
             
-            <td v-if="currentTab === 'pending'" class="px-6 py-4 text-center space-x-2">
-              <button @click="approve(req._id)" class="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 text-sm">Approve</button>
-              <button @click="openRejectModal(req._id)" class="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 text-sm">Reject</button>
+            <td v-if="currentTab === 'pending'" class="px-6 py-4">
+              <div class="flex flex-col items-center justify-center gap-2 xl:flex-row">
+                <button @click="approve(req._id)" class="w-24 rounded bg-green-600 px-3 py-1 text-sm text-white hover:bg-green-700">Approve</button>
+                <button @click="openRejectModal(req._id)" class="w-24 rounded bg-red-600 px-3 py-1 text-sm text-white hover:bg-red-700">Reject</button>
+              </div>
             </td>
 
-            <td v-if="currentTab === 'history'" class="px-6 py-4">
+            <td v-if="currentTab === 'history'" class="px-6 py-4 align-top">
               <span :class="req.status === 'approved' ? 'text-green-600 bg-green-100' : 'text-red-600 bg-red-100'" class="px-2 py-1 text-xs font-bold rounded uppercase">
                 {{ req.status }}
               </span>
               <p v-if="req.resolvedAt" class="text-xs text-gray-500 mt-2">On: {{ new Date(req.resolvedAt).toLocaleDateString() }}</p>
+              <p v-if="req.reviewedBy" class="text-xs text-gray-600 mt-1">
+                <span class="font-bold">Reviewed by:</span> {{ formatReviewer(req.reviewedBy) }}
+              </p>
               <p v-if="req.status === 'rejected' && req.managerNotes" class="text-xs text-gray-700 mt-1" :title="req.managerNotes">
-                <span class="font-bold">Note:</span> {{ req.managerNotes }}
+                <span class="font-bold">Reason:</span> {{ req.managerNotes }}
               </p>
             </td>
           </tr>
@@ -128,6 +133,12 @@ const loadRequests = async () => {
   } finally {
     isLoading.value = false
   }
+}
+
+const formatReviewer = (reviewer) => {
+  if (!reviewer) return 'Unknown'
+  if (typeof reviewer === 'string') return reviewer
+  return reviewer.name || reviewer.email || 'Unknown'
 }
 
 // Automatically reload the data whenever the tab is clicked
