@@ -369,6 +369,13 @@
                       >
                         Request Return
                       </button>
+                      <p
+                        v-if="getReturnEligibilityStatus(order, item)"
+                        class="whitespace-nowrap text-xs font-medium"
+                        :class="getReturnEligibilityStatus(order, item).eligible ? 'text-emerald-700' : 'text-gray-500'"
+                      >
+                        {{ getReturnEligibilityStatus(order, item).label }}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -1228,10 +1235,42 @@ const getReviewButtonLabel = (order, item) => {
   return order.deliveryStatus === 'delivered' ? 'Leave Review' : 'Available after delivery'
 }
 
+const getReturnWindowDeadline = (order) => {
+  if (!order.paidAt) return null
+  const paidAt = new Date(order.paidAt)
+  if (Number.isNaN(paidAt.getTime())) return null
+
+  const deadline = new Date(paidAt)
+  deadline.setDate(deadline.getDate() + 30)
+  return deadline
+}
+
+const isWithinReturnWindow = (order) => {
+  const deadline = getReturnWindowDeadline(order)
+  return Boolean(deadline && Date.now() <= deadline.getTime())
+}
+
+const getReturnEligibilityStatus = (order, item) => {
+  if (user.value.role !== 'customer' || order.status !== 'paid') return null
+  if (order.deliveryStatus !== 'delivered') {
+    return { eligible: false, label: 'Return available after delivery' }
+  }
+  if (!isWithinReturnWindow(order)) {
+    return { eligible: false, label: 'Return window expired' }
+  }
+  if (getRemainingReturnQuantity(order, item) <= 0) {
+    return { eligible: false, label: 'Fully returned' }
+  }
+
+  const deadline = getReturnWindowDeadline(order)
+  return { eligible: true, label: `Return eligible until ${formatDate(deadline)}` }
+}
+
 const canRequestReturn = (order, item) => {
   return user.value.role === 'customer' &&
     order.status === 'paid' &&
     order.deliveryStatus === 'delivered' &&
+    isWithinReturnWindow(order) &&
     getRemainingReturnQuantity(order, item) > 0
 }
 

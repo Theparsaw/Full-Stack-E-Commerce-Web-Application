@@ -36,6 +36,7 @@ const buildOrder = (overrides = {}) => ({
   _id: "order-1",
   userId: "user-1",
   status: "paid",
+  paidAt: new Date(),
   items: [
     { productId: "p001", name: "Keyboard", unitPrice: 80, quantity: 1 },
     { productId: "p002", name: "Mouse", unitPrice: 40, quantity: 2 },
@@ -46,6 +47,7 @@ const buildOrder = (overrides = {}) => ({
 describe("returnRequestController", () => {
   beforeEach(() => {
     jest.resetAllMocks();
+    jest.useRealTimers();
     ReturnRequest.find.mockReturnValue({ lean: jest.fn().mockResolvedValue([]) });
   });
 
@@ -320,6 +322,79 @@ describe("returnRequestController", () => {
     expect(res.status).toHaveBeenCalledWith(400);
     expect(res.json).toHaveBeenCalledWith({
       message: "Returns can only be requested after delivery",
+    });
+    expect(ReturnRequest.create).not.toHaveBeenCalled();
+  });
+
+  test("createReturnRequest allows a delivered order exactly 30 days after purchase", async () => {
+    jest.useFakeTimers().setSystemTime(new Date("2026-05-20T12:00:00.000Z"));
+    const order = buildOrder({ paidAt: new Date("2026-04-20T12:00:00.000Z") });
+
+    Order.findOne.mockReturnValue({ lean: jest.fn().mockResolvedValue(order) });
+    Delivery.findOne.mockReturnValue({ lean: jest.fn().mockResolvedValue({ status: "delivered" }) });
+    ReturnRequest.create.mockResolvedValue({
+      _id: "return-1",
+      orderId: "order-1",
+      items: [{ ...order.items[0], quantity: 1 }],
+      reason: "Damaged",
+      refundAmount: 80,
+      status: "pending",
+    });
+
+    const req = {
+      user: { id: "user-1" },
+      body: { orderId: "order-1", items: [{ productId: "p001", quantity: 1 }], reason: "Damaged" },
+    };
+    const res = createRes();
+
+    await createReturnRequest(req, res);
+
+    expect(ReturnRequest.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        orderId: "order-1",
+        items: [{ ...order.items[0], quantity: 1 }],
+      })
+    );
+    expect(res.status).toHaveBeenCalledWith(201);
+  });
+
+  test("createReturnRequest rejects delivered orders after the 30-day purchase window", async () => {
+    jest.useFakeTimers().setSystemTime(new Date("2026-05-20T12:00:00.000Z"));
+    Order.findOne.mockReturnValue({
+      lean: jest.fn().mockResolvedValue(buildOrder({ paidAt: new Date("2026-04-19T11:59:59.999Z") })),
+    });
+    Delivery.findOne.mockReturnValue({ lean: jest.fn().mockResolvedValue({ status: "delivered" }) });
+
+    const req = {
+      user: { id: "user-1" },
+      body: { orderId: "order-1", items: [{ productId: "p001", quantity: 1 }], reason: "Damaged" },
+    };
+    const res = createRes();
+
+    await createReturnRequest(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({
+      message: "Return window expired (30 days from purchase)",
+    });
+    expect(ReturnRequest.create).not.toHaveBeenCalled();
+  });
+
+  test("createReturnRequest rejects paid orders without a payment date", async () => {
+    Order.findOne.mockReturnValue({ lean: jest.fn().mockResolvedValue(buildOrder({ paidAt: null })) });
+    Delivery.findOne.mockReturnValue({ lean: jest.fn().mockResolvedValue({ status: "delivered" }) });
+
+    const req = {
+      user: { id: "user-1" },
+      body: { orderId: "order-1", items: [{ productId: "p001", quantity: 1 }], reason: "Damaged" },
+    };
+    const res = createRes();
+
+    await createReturnRequest(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({
+      message: "Return window expired (30 days from purchase)",
     });
     expect(ReturnRequest.create).not.toHaveBeenCalled();
   });

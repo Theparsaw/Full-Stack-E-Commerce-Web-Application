@@ -5,6 +5,9 @@ const Order = require("../models/Order");
 const Delivery = require("../models/Delivery");
 const Product = require("../models/Product");
 
+const RETURN_WINDOW_DAYS = 30;
+const RETURN_WINDOW_MS = RETURN_WINDOW_DAYS * 24 * 60 * 60 * 1000;
+
 const normalizeRequestedReturnItems = (items, itemProductIds) => {
   if (Array.isArray(items)) {
     return items.map((item) => ({
@@ -58,6 +61,13 @@ const findExistingReturnRequests = async (userId, orderId) => {
   return typeof query.lean === "function" ? query.lean() : query;
 };
 
+const isWithinReturnWindow = (paidAt) => {
+  const paidDate = new Date(paidAt);
+  if (Number.isNaN(paidDate.getTime())) return false;
+
+  return Date.now() - paidDate.getTime() <= RETURN_WINDOW_MS;
+};
+
 const cleanupUploadedReturnPhotos = async (files = []) => {
   await Promise.all(
     files.map((file) => fs.promises.unlink(file.path).catch(() => null))
@@ -91,6 +101,10 @@ const createReturnRequest = async (req, res) => {
     const delivery = await Delivery.findOne({ orderId }).lean();
     if (!delivery || delivery.status !== "delivered") {
       return fail(400, { message: "Returns can only be requested after delivery" });
+    }
+
+    if (!order.paidAt || !isWithinReturnWindow(order.paidAt)) {
+      return fail(400, { message: "Return window expired (30 days from purchase)" });
     }
 
     if (requestedItems.length === 0) {

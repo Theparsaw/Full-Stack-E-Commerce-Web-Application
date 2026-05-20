@@ -177,6 +177,7 @@ describe("Customer data ownership protection", () => {
       _id: "order-1",
       userId: "customer-1",
       status: "paid",
+      paidAt: new Date(),
       items: [
         {
           productId: "p001",

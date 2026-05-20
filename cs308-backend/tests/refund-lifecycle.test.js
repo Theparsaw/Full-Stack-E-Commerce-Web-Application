@@ -59,6 +59,7 @@ beforeAll(async () => {
     items: [{ productId: testProductId, name: "Lifecycle Item", unitPrice: 100, quantity: 1 }],
     totalPrice: 100,
     status: "paid",
+    paidAt: new Date(),
   });
   testOrderId = order._id;
 
