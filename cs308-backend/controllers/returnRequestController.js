@@ -198,48 +198,77 @@ const rejectReturnRequest = async (req, res) => {
 };
 
 const approveReturnRequest = async (req, res) => {
-  const session = await mongoose.startSession();
-  session.startTransaction();
+  const maxAttempts = 3;
 
-  try {
-    const returnReq = await ReturnRequest.findById(req.params.id).session(session);
-    
-    // Prevent repeated stock restoration (Acceptance Criteria 3)
-    if (!returnReq || returnReq.status !== "pending") {
-      return res.status(400).json({ message: "Invalid request or already processed" });
-    }
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    const session = await mongoose.startSession();
 
-    for (const item of returnReq.items) {
-      // 1. Add returned quantity back to stock (Acceptance Criteria 1)
-      await Product.findOneAndUpdate(
-        { productId: item.productId },
-        { $inc: { quantityInStock: item.quantity } },
-        { session }
+    try {
+      session.startTransaction();
+
+      const resolvedAt = new Date();
+      const returnReq = await ReturnRequest.findOneAndUpdate(
+        { _id: req.params.id, status: "pending" },
+        {
+          $set: {
+            status: "approved",
+            resolvedAt,
+            reviewedBy: req.user.id,
+          },
+        },
+        { returnDocument: "after", session }
       );
 
-      // 2. NEW: Update order item return status
-      // This reaches into the Order's item array and flags the specific product as "returned"
-      await Order.findOneAndUpdate(
-        { _id: returnReq.orderId, "items.productId": item.productId },
-        { $set: { "items.$.status": "returned" } }, 
-        { session }
-      );
+      if (!returnReq) {
+        await session.abortTransaction();
+        return res.status(400).json({ message: "Invalid request or already processed" });
+      }
+
+      for (const item of returnReq.items) {
+        const restoredProduct = await Product.findOneAndUpdate(
+          { productId: item.productId },
+          { $inc: { quantityInStock: item.quantity } },
+          { returnDocument: "after", session }
+        );
+
+        if (!restoredProduct) {
+          const error = new Error(`Product ${item.productId} was not found`);
+          error.statusCode = 404;
+          throw error;
+        }
+
+        const updatedOrder = await Order.findOneAndUpdate(
+          { _id: returnReq.orderId, "items.productId": item.productId },
+          { $set: { "items.$.status": "returned" } },
+          { returnDocument: "after", session }
+        );
+
+        if (!updatedOrder) {
+          const error = new Error(`Order item ${item.productId} was not found`);
+          error.statusCode = 404;
+          throw error;
+        }
+      }
+
+      await session.commitTransaction();
+      return res.status(200).json({ success: true, data: returnReq });
+    } catch (error) {
+      if (session.inTransaction()) {
+        await session.abortTransaction();
+      }
+
+      if (error.hasErrorLabel?.("TransientTransactionError") && attempt < maxAttempts) {
+        continue;
+      }
+
+      const statusCode = error.statusCode || 500;
+      return res.status(statusCode).json({
+        message: statusCode === 500 ? "Server Error" : error.message,
+        error: error.message,
+      });
+    } finally {
+      session.endSession();
     }
-
-    // Update return request status to approved and store date
-    returnReq.status = "approved";
-    returnReq.resolvedAt = new Date();
-    returnReq.reviewedBy = req.user.id;
-    await returnReq.save({ session });
-
-    await session.commitTransaction();
-    session.endSession();
-    
-    return res.status(200).json({ success: true, data: returnReq });
-  } catch (error) {
-    await session.abortTransaction();
-    session.endSession();
-    return res.status(500).json({ message: "Server Error", error: error.message });
   }
 };
 

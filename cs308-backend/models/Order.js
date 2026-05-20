@@ -41,6 +41,11 @@ const orderItemSchema = new mongoose.Schema(
       required: true,
       min: 1,
     },
+    status: {
+      type: String,
+      enum: ["active", "returned"],
+      default: "active",
+    },
   },
   {
     _id: false,
