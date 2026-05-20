@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-[linear-gradient(180deg,#f8fafc_0%,#eef2ff_42%,#fff7ed_100%)] py-10">
+  <div class="theme-page-shell min-h-screen py-10">
     <div class="mx-auto max-w-5xl px-4">
       <div class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>

@@ -1,10 +1,10 @@
 <template>
-  <section class="relative min-h-[calc(100vh-5rem)] overflow-hidden bg-slate-50">
-    <div class="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.92)_0%,rgba(241,245,249,0.96)_52%,rgba(226,232,240,0.88)_100%)]" />
+  <section class="theme-page-shell relative min-h-[calc(100vh-5rem)] overflow-hidden">
+    <div class="absolute inset-0 bg-[linear-gradient(180deg,var(--theme-surface-glow)_0%,var(--theme-bg)_52%,var(--theme-muted)_100%)]" />
     <div class="relative mx-auto max-w-7xl px-4 py-7 md:px-6 lg:py-10">
       <div
         ref="heroPanelRef"
-        class="group relative min-h-[34rem] overflow-hidden rounded-[2rem] border border-white/18 bg-[linear-gradient(135deg,#1e1b4b_0%,#4338ca_52%,#c2410c_100%)] shadow-2xl transition duration-150 md:min-h-[37rem]"
+        class="theme-hero-panel group relative min-h-[34rem] overflow-hidden rounded-[2rem] border border-white/18 shadow-2xl transition duration-150 md:min-h-[37rem]"
         :style="heroPanelStyle"
         @mousemove="updateHeroGlow"
         @mouseleave="resetHeroGlow"
@@ -20,7 +20,7 @@
           class="absolute inset-0 overflow-hidden rounded-[inherit] transition-opacity duration-500 [backface-visibility:hidden] [transform:translateZ(0)]"
           :class="index === currentSlideIndex ? 'opacity-100' : 'opacity-0'"
         >
-          <div class="absolute inset-0 bg-[linear-gradient(90deg,rgba(30,27,75,0.86)_0%,rgba(67,56,202,0.62)_45%,rgba(194,65,12,0.26)_100%)]" />
+          <div class="theme-hero-overlay absolute inset-0" />
           <div class="absolute inset-y-6 right-4 w-full overflow-hidden rounded-[1.75rem] [backface-visibility:hidden] [transform:translateZ(0)] md:inset-y-8 md:right-8 md:w-[46%] lg:inset-y-10 lg:right-10 lg:w-[42%]">
             <img
               :src="slide.image"
@@ -28,14 +28,14 @@
               class="h-full w-full object-contain object-center"
             >
           </div>
-          <div class="absolute inset-0 bg-[radial-gradient(circle_at_78%_35%,rgba(251,191,36,0.22),transparent_24%)]" />
+          <div class="absolute inset-0 bg-[radial-gradient(circle_at_78%_35%,var(--theme-hero-radial),transparent_24%)]" />
         </div>
 
         <div
           class="pointer-events-none absolute inset-0 transition duration-200"
           :style="heroGlowStyle"
         />
-        <div class="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(199,210,254,0.16),transparent_34%,rgba(255,255,255,0.06)_60%,rgba(251,191,36,0.14)_100%)]" />
+        <div class="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,var(--theme-hero-sheen),transparent_34%,rgba(255,255,255,0.06)_60%,var(--theme-hero-radial)_100%)]" />
 
         <div class="relative z-10 flex min-h-[34rem] flex-col p-7 md:min-h-[37rem] md:p-8 lg:p-10">
           <div class="flex max-w-2xl flex-1 flex-col">
@@ -201,7 +201,7 @@ const resetHeroGlow = () => {
 
 const heroPanelStyle = computed(() => ({
   transform: `perspective(1400px) translateZ(0) rotateX(${heroGlow.value.rotateX}deg) rotateY(${heroGlow.value.rotateY}deg)`,
-  boxShadow: `0 28px 80px rgba(28, 25, 23, 0.34), 0 0 54px rgba(251, 146, 60, ${0.08 + heroGlow.value.opacity * 0.1})`,
+  boxShadow: `0 28px 80px rgba(28, 25, 23, 0.34), 0 0 54px rgba(var(--theme-glow-rgb), ${0.08 + heroGlow.value.opacity * 0.1})`,
   willChange: 'transform',
   WebkitMaskImage: '-webkit-radial-gradient(white, black)'
 }))
@@ -209,9 +209,9 @@ const heroPanelStyle = computed(() => ({
 const heroGlowStyle = computed(() => ({
   background: `
     radial-gradient(circle at ${heroGlow.value.x}% ${heroGlow.value.y}%,
-    rgba(251, 146, 60, ${0.3 * heroGlow.value.opacity}) 0%,
-    rgba(253, 186, 116, ${0.2 * heroGlow.value.opacity}) 16%,
-    rgba(255, 237, 213, ${0.1 * heroGlow.value.opacity}) 30%,
+    rgba(var(--theme-glow-rgb), ${0.3 * heroGlow.value.opacity}) 0%,
+    rgba(var(--theme-glow-soft-rgb), ${0.2 * heroGlow.value.opacity}) 16%,
+    rgba(var(--theme-glow-pale-rgb), ${0.1 * heroGlow.value.opacity}) 30%,
     rgba(28, 25, 23, 0) 48%)
   `
 }))

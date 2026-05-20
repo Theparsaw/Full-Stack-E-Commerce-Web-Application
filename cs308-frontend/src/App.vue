@@ -1,6 +1,6 @@
 <template>
-  <div class="min-h-screen bg-[linear-gradient(180deg,#f8fafc_0%,#eef2ff_34%,#fef3c7_100%)]">
-    <header class="sticky top-0 z-50 border-b border-orange-100/70 bg-[linear-gradient(90deg,rgba(255,247,237,0.96)_0%,rgba(238,242,255,0.96)_54%,rgba(254,243,199,0.94)_100%)] shadow-lg shadow-slate-900/10 backdrop-blur">
+  <div class="theme-app-shell min-h-screen">
+    <header class="theme-header sticky top-0 z-50 border-b border-orange-100/70 shadow-lg shadow-slate-900/10 backdrop-blur">
       <div class="max-w-7xl mx-auto px-4 py-4 flex items-center gap-4">
         <router-link to="/" class="text-2xl font-bold text-orange-600 shrink-0">
           CS308 Store
@@ -32,6 +32,18 @@
         </div>
 
         <div class="flex items-center gap-3 shrink-0">
+          <label class="sr-only" for="theme-select">Theme</label>
+          <select
+            id="theme-select"
+            v-model="currentTheme"
+            class="theme-select h-11 rounded-xl border border-orange-200 bg-white/72 px-3 text-sm font-medium text-slate-800 outline-none transition hover:border-orange-300 focus:border-orange-400 focus:ring-2 focus:ring-orange-200"
+            aria-label="Choose color theme"
+          >
+            <option v-for="theme in themes" :key="theme.value" :value="theme.value">
+              {{ theme.label }}
+            </option>
+          </select>
+
           <router-link
             to="/cart"
             class="relative flex items-center gap-2 px-4 py-2.5 rounded-xl border border-orange-200 bg-white/72 text-slate-800 backdrop-blur hover:border-orange-300 hover:bg-white/90 transition"
@@ -252,6 +264,28 @@ import { notificationStore } from './store/notificationStore'
 const router = useRouter()
 const route = useRoute()
 const searchInput = ref('')
+const THEME_STORAGE_KEY = 'cs308-theme'
+
+const themes = [
+  { value: 'sunrise', label: 'Sunrise' },
+  { value: 'ocean', label: 'Ocean' },
+  { value: 'forest', label: 'Forest' },
+  { value: 'plum', label: 'Plum' },
+]
+
+const getInitialTheme = () => {
+  if (typeof window === 'undefined') return 'sunrise'
+  const storedTheme = window.localStorage.getItem(THEME_STORAGE_KEY)
+  return themes.some((theme) => theme.value === storedTheme) ? storedTheme : 'sunrise'
+}
+
+const currentTheme = ref(getInitialTheme())
+
+const applyTheme = (theme) => {
+  if (typeof document === 'undefined') return
+  document.documentElement.dataset.theme = theme
+  document.documentElement.style.colorScheme = theme === 'plum' ? 'dark' : 'light'
+}
 
 const sortOptions = [
   { value: '',          label: 'Recommended' },
@@ -335,6 +369,17 @@ watch(
   () => route.query.search,
   (newSearch) => {
     searchInput.value = typeof newSearch === 'string' ? newSearch : ''
+  },
+  { immediate: true }
+)
+
+watch(
+  currentTheme,
+  (theme) => {
+    applyTheme(theme)
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(THEME_STORAGE_KEY, theme)
+    }
   },
   { immediate: true }
 )

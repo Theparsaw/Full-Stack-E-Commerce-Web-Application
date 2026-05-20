@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen flex items-center justify-center bg-[linear-gradient(135deg,#f8fafc_0%,#eef2ff_48%,#fff7ed_100%)]">
+  <div class="theme-page-shell min-h-screen flex items-center justify-center">
     <div class="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
 
       <h1 class="text-2xl font-bold mb-6 text-center">Login</h1>

@@ -1,5 +1,5 @@
 <template>
-  <div class="bg-[linear-gradient(180deg,#f8fafc_0%,#eef2ff_38%,#fff7ed_100%)]">
+  <div class="theme-page-shell">
     <HomeHero
       v-if="!isSearching && !loading && heroSlides.length"
       :slides="heroSlides"

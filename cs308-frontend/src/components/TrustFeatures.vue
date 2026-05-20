@@ -1,5 +1,5 @@
 <template>
-  <section class="border-b border-orange-100 bg-[linear-gradient(90deg,#f8fafc_0%,#fff7ed_46%,#ecfeff_100%)]">
+  <section class="border-b border-orange-100 bg-[linear-gradient(90deg,var(--theme-bg-strong)_0%,var(--theme-surface-soft)_46%,var(--theme-bg)_100%)]">
     <div class="mx-auto grid max-w-7xl gap-4 px-4 py-6 md:grid-cols-2 md:px-6 lg:grid-cols-4">
       <article
         v-for="item in trustItems"

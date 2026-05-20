@@ -1,15 +1,15 @@
 <template>
   <div
     ref="sectionRef"
-    class="relative w-full overflow-hidden border-t border-orange-100/70 bg-[linear-gradient(135deg,#1e1b4b_0%,#4338ca_52%,#c2410c_100%)]"
+    class="theme-hero-panel relative w-full overflow-hidden border-t border-orange-100/70"
     style="min-height: 36rem;"
     @mousemove="onMove"
     @mouseleave="onLeave"
   >
     <canvas ref="canvasRef" class="absolute inset-0 w-full h-full" />
 
-    <div class="absolute inset-0 bg-indigo-950/38" />
-    <div class="absolute inset-0 bg-[linear-gradient(135deg,rgba(199,210,254,0.16),transparent_34%,rgba(255,255,255,0.06)_60%,rgba(251,191,36,0.14)_100%)]" />
+    <div class="absolute inset-0 bg-[var(--theme-hero-scrim)]" />
+    <div class="absolute inset-0 bg-[linear-gradient(135deg,var(--theme-hero-sheen),transparent_34%,rgba(255,255,255,0.06)_60%,var(--theme-hero-radial)_100%)]" />
 
     <div class="relative z-10 mx-auto flex min-h-[36rem] max-w-7xl flex-col justify-between px-4 py-10 md:px-6 lg:px-8">
       <div class="grid gap-8 pt-14 lg:grid-cols-[1.1fr_0.9fr] lg:items-start">
@@ -71,7 +71,7 @@ import { ref, onMounted, onUnmounted } from 'vue'
 
 const canvasRef = ref(null)
 const sectionRef = ref(null)
-let animationId, ctx, w, h
+let animationId, ctx, w, h, themeObserver
 const particles = []
 const mouse = { x: -1000, y: -1000 }
 
@@ -87,7 +87,7 @@ class Particle {
     this.vy = (Math.random() - 0.5) * 0.6
     this.r = Math.random() * 2.2 + 0.8
     this.opacity = Math.random() * 0.5 + 0.5
-    const palette = ['199,210,254', '165,180,252', '251,191,36', '251,146,60', '255,237,213']
+    const palette = getThemeParticlePalette()
     this.color = palette[Math.floor(Math.random() * palette.length)]
   }
 
@@ -140,7 +140,7 @@ const animate = () => {
         ctx.beginPath()
         ctx.moveTo(particles[i].x, particles[i].y)
         ctx.lineTo(particles[j].x, particles[j].y)
-        ctx.strokeStyle = `rgba(255,120,0,${(1 - d / CONNECT_DIST) * 0.45})`
+        ctx.strokeStyle = `rgba(${getThemeParticleAccent()},${(1 - d / CONNECT_DIST) * 0.45})`
         ctx.lineWidth = 0.8
         ctx.stroke()
       }
@@ -163,13 +163,39 @@ const onResize = () => {
   h = canvasRef.value.height = canvasRef.value.clientHeight
 }
 
+const onThemeChange = () => {
+  const palette = getThemeParticlePalette()
+  particles.forEach((particle) => {
+    particle.color = palette[Math.floor(Math.random() * palette.length)]
+  })
+}
+
+const getThemeParticlePalette = () => {
+  const value = getComputedStyle(document.documentElement)
+    .getPropertyValue('--theme-particle-palette')
+    .trim()
+  return value ? value.split('|') : ['199,210,254', '165,180,252', '251,191,36', '251,146,60', '255,237,213']
+}
+
+const getThemeParticleAccent = () => {
+  return getComputedStyle(document.documentElement)
+    .getPropertyValue('--theme-particle-accent')
+    .trim() || '255,120,0'
+}
+
 onMounted(() => {
   init()
+  themeObserver = new MutationObserver(onThemeChange)
+  themeObserver.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ['data-theme']
+  })
   window.addEventListener('resize', onResize)
 })
 
 onUnmounted(() => {
   cancelAnimationFrame(animationId)
+  themeObserver?.disconnect()
   window.removeEventListener('resize', onResize)
 })
 </script>
