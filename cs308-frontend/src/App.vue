@@ -2,6 +2,59 @@
   <div class="theme-app-shell min-h-screen">
     <header class="theme-header sticky top-0 z-50 border-b border-orange-100/70 shadow-lg shadow-slate-900/10 backdrop-blur">
       <div class="max-w-7xl mx-auto px-4 py-4 flex items-center gap-4">
+        <div class="relative shrink-0">
+          <button
+            type="button"
+            class="theme-select relative flex h-11 w-11 items-center justify-center rounded-xl border border-orange-200 bg-white/72 shadow-sm backdrop-blur transition hover:border-orange-300 hover:bg-white/90 focus:outline-none focus:ring-2 focus:ring-orange-200"
+            aria-label="Choose color theme"
+            :aria-expanded="themeMenuOpen"
+            aria-haspopup="menu"
+            title="Choose theme"
+            @click="themeMenuOpen = !themeMenuOpen"
+          >
+            <span
+              class="absolute inset-2 rounded-lg shadow-inner"
+              :style="{ background: currentThemeConfig.preview }"
+              aria-hidden="true"
+            />
+            <span class="relative flex gap-px" aria-hidden="true">
+              <span
+                v-for="color in currentThemeConfig.swatches"
+                :key="color"
+                class="h-1.5 w-1.5 rounded-full border border-white/80 shadow-sm"
+                :style="{ backgroundColor: color }"
+              />
+            </span>
+          </button>
+
+          <div
+            v-if="themeMenuOpen"
+            class="absolute left-0 top-full z-50 mt-2 w-56 overflow-hidden rounded-xl border border-orange-100 bg-white p-2 shadow-xl"
+            role="menu"
+          >
+            <button
+              v-for="theme in themes"
+              :key="theme.value"
+              type="button"
+              class="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left transition hover:bg-orange-50"
+              :class="currentTheme === theme.value ? 'bg-orange-50' : ''"
+              role="menuitemradio"
+              :aria-checked="currentTheme === theme.value"
+              @click="selectTheme(theme.value)"
+            >
+              <span
+                class="h-8 w-10 shrink-0 rounded-lg border border-orange-100"
+                :style="{ background: theme.preview }"
+                aria-hidden="true"
+              />
+              <span class="min-w-0">
+                <span class="block text-sm font-semibold text-slate-800">{{ theme.label }}</span>
+                <span class="block whitespace-nowrap text-xs text-slate-500">{{ theme.description }}</span>
+              </span>
+            </button>
+          </div>
+        </div>
+
         <router-link to="/" class="text-2xl font-bold text-orange-600 shrink-0">
           CS308 Store
         </router-link>
@@ -32,18 +85,6 @@
         </div>
 
         <div class="flex items-center gap-3 shrink-0">
-          <label class="sr-only" for="theme-select">Theme</label>
-          <select
-            id="theme-select"
-            v-model="currentTheme"
-            class="theme-select h-11 rounded-xl border border-orange-200 bg-white/72 px-3 text-sm font-medium text-slate-800 outline-none transition hover:border-orange-300 focus:border-orange-400 focus:ring-2 focus:ring-orange-200"
-            aria-label="Choose color theme"
-          >
-            <option v-for="theme in themes" :key="theme.value" :value="theme.value">
-              {{ theme.label }}
-            </option>
-          </select>
-
           <router-link
             v-if="showShoppingActions"
             to="/cart"
@@ -75,9 +116,25 @@
           <router-link
             v-if="authStore.isLoggedIn && authStore.role === 'customer'"
             to="/notifications"
-            class="relative flex items-center justify-center rounded-xl border border-orange-200 bg-white/72 px-4 py-2.5 text-slate-800 backdrop-blur hover:border-orange-300 hover:bg-white/90 transition"
+            class="relative flex h-11 w-11 items-center justify-center rounded-xl border border-orange-200 bg-white/72 text-slate-800 backdrop-blur transition hover:border-orange-300 hover:bg-white/90"
+            aria-label="Open notifications"
+            title="Open notifications"
           >
-            <span class="text-lg">🔔</span>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="h-5 w-5 text-slate-700"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              stroke-width="1.8"
+              aria-hidden="true"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M14.857 17.082a2.75 2.75 0 01-5.714 0M18 8.25A6 6 0 006 8.25c0 7-3 7.75-3 7.75h18s-3-.75-3-7.75z"
+              />
+            </svg>
 
             <span
               v-if="notificationStore.unreadCount > 0"
@@ -265,13 +322,38 @@ import { notificationStore } from './store/notificationStore'
 const router = useRouter()
 const route = useRoute()
 const searchInput = ref('')
+const themeMenuOpen = ref(false)
 const THEME_STORAGE_KEY = 'cs308-theme'
 
 const themes = [
-  { value: 'sunrise', label: 'Sunrise' },
-  { value: 'ocean', label: 'Ocean' },
-  { value: 'forest', label: 'Forest' },
-  { value: 'plum', label: 'Plum' },
+  {
+    value: 'sunrise',
+    label: 'Sunrise',
+    description: 'Bright and warm',
+    preview: 'linear-gradient(135deg, #f8fafc 0%, #eef2ff 48%, #fff7ed 100%)',
+    swatches: ['#4338ca', '#f97316', '#fef3c7'],
+  },
+  {
+    value: 'ocean',
+    label: 'Ocean',
+    description: 'Clean blue tones',
+    preview: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 48%, #ecfeff 100%)',
+    swatches: ['#0369a1', '#0284c7', '#67e8f9'],
+  },
+  {
+    value: 'forest',
+    label: 'Forest',
+    description: 'Fresh greens',
+    preview: 'linear-gradient(135deg, #f7fee7 0%, #ecfdf5 48%, #dcfce7 100%)',
+    swatches: ['#166534', '#16a34a', '#fde047'],
+  },
+  {
+    value: 'plum',
+    label: 'Plum',
+    description: 'Deep purple',
+    preview: 'linear-gradient(135deg, #2d1b3d 0%, #581c87 54%, #9d174d 100%)',
+    swatches: ['#7c3aed', '#d946ef', '#f9a8d4'],
+  },
 ]
 
 const getInitialTheme = () => {
@@ -281,11 +363,19 @@ const getInitialTheme = () => {
 }
 
 const currentTheme = ref(getInitialTheme())
+const currentThemeConfig = computed(
+  () => themes.find((theme) => theme.value === currentTheme.value) || themes[0]
+)
 
 const applyTheme = (theme) => {
   if (typeof document === 'undefined') return
   document.documentElement.dataset.theme = theme
   document.documentElement.style.colorScheme = theme === 'plum' ? 'dark' : 'light'
+}
+
+const selectTheme = (theme) => {
+  currentTheme.value = theme
+  themeMenuOpen.value = false
 }
 
 const sortOptions = [
