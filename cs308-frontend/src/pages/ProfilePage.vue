@@ -3,7 +3,7 @@
     <div class="mx-auto max-w-5xl px-4">
       <div class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 class="text-3xl font-bold text-gray-800">My Profile</h1>
+          <h1 class="font-page-title text-gray-800">My Profile</h1>
           <p class="mt-2 text-sm text-gray-500">
             Manage your account details and track current deliveries.
           </p>
@@ -62,7 +62,7 @@
             </div>
 
             <div>
-              <h2 class="text-2xl font-bold text-gray-800">{{ user.name }}</h2>
+              <h2 class="font-profile-name text-gray-800">{{ user.name }}</h2>
               <span
                 class="mt-1 inline-block rounded-full px-3 py-1 text-sm font-medium"
                 :class="{
@@ -91,22 +91,22 @@
 
           <div v-if="!isEditing" class="space-y-5">
             <div class="flex flex-col gap-1">
-              <span class="text-sm font-medium uppercase tracking-wide text-gray-400">Email</span>
+              <span class="font-profile-label uppercase tracking-wide text-gray-400">Email</span>
               <span class="font-medium text-gray-800">{{ user.email }}</span>
             </div>
 
             <div class="flex flex-col gap-1">
-              <span class="text-sm font-medium uppercase tracking-wide text-gray-400">Tax ID</span>
+              <span class="font-profile-label uppercase tracking-wide text-gray-400">Tax ID</span>
               <span class="font-medium text-gray-800">{{ user.taxId || 'Not provided' }}</span>
             </div>
 
             <div class="flex flex-col gap-1">
-              <span class="text-sm font-medium uppercase tracking-wide text-gray-400">Address</span>
+              <span class="font-profile-label uppercase tracking-wide text-gray-400">Address</span>
               <span class="font-medium text-gray-800">{{ user.address || 'Not provided' }}</span>
             </div>
 
             <div class="flex flex-col gap-1">
-              <span class="text-sm font-medium uppercase tracking-wide text-gray-400">Member Since</span>
+              <span class="font-profile-label uppercase tracking-wide text-gray-400">Member Since</span>
               <span class="font-medium text-gray-800">{{ formatDate(user.createdAt) }}</span>
             </div>
           </div>
@@ -121,7 +121,7 @@
             />
 
             <div class="flex flex-col gap-3">
-              <span class="text-sm font-medium uppercase tracking-wide text-gray-400">Profile Photo</span>
+              <span class="font-profile-label uppercase tracking-wide text-gray-400">Profile Photo</span>
               <div class="flex flex-wrap items-center gap-4">
                 <img
                   v-if="displayProfileImage"
@@ -159,7 +159,7 @@
             </div>
 
             <div class="flex flex-col gap-2">
-              <label class="text-sm font-medium uppercase tracking-wide text-gray-400" for="name">
+              <label class="font-profile-label uppercase tracking-wide text-gray-400" for="name">
                 Name
               </label>
               <input
@@ -179,7 +179,7 @@
             </div>
 
             <div class="flex flex-col gap-2">
-              <label class="text-sm font-medium uppercase tracking-wide text-gray-400" for="email">
+              <label class="font-profile-label uppercase tracking-wide text-gray-400" for="email">
                 Email
               </label>
               <input
@@ -192,7 +192,7 @@
             </div>
 
             <div class="flex flex-col gap-2">
-              <label class="text-sm font-medium uppercase tracking-wide text-gray-400" for="taxId">
+              <label class="font-profile-label uppercase tracking-wide text-gray-400" for="taxId">
                 Tax ID
               </label>
               <input
@@ -212,7 +212,7 @@
             </div>
 
             <div class="flex flex-col gap-2">
-              <label class="text-sm font-medium uppercase tracking-wide text-gray-400" for="address">
+              <label class="font-profile-label uppercase tracking-wide text-gray-400" for="address">
                 Address
               </label>
               <textarea
@@ -878,6 +878,19 @@ import { cancelOrder, getMyOrders } from '../api/orderApi'
 import { getMyReturnRequests, submitReturnRequest } from '../api/returnApi'
 import { authStore } from '../store/auth'
 import { wishlistStore } from '../store/wishlist'
+import {
+  canRequestReturn as canRequestReturnForItem,
+  createEmptyReturnForm,
+  getApprovedReturnedQuantityForItem as getApprovedReturnedQuantityForItemFromRequests,
+  getPendingReturnQuantityForItem as getPendingReturnQuantityForItemFromRequests,
+  getRemainingReturnQuantity as getRemainingReturnQuantityFromRequests,
+  getReturnEligibilityStatus as getReturnEligibilityStatusForItem,
+  getReturnWindowDeadline as getReturnWindowDeadlineForOrder,
+  hasPendingReturnForItem as hasPendingReturnForItemFromRequests,
+  isWithinReturnWindow as isWithinReturnWindowForOrder,
+  loadCustomerReturnRequests,
+  submitReturnRequestFlow,
+} from '../utils/profileReturns'
 
 const route = useRoute()
 const router = useRouter()
@@ -924,12 +937,7 @@ const form = ref({
   profileImage: '',
 })
 
-const returnForm = ref({
-  orderId: '',
-  items: [],
-  reason: '',
-  photos: [],
-})
+const returnForm = ref(createEmptyReturnForm())
 
 const tabs = computed(() => {
   const baseTabs = [
@@ -1018,17 +1026,14 @@ const fetchOrders = async () => {
 }
 
 const fetchReturnRequests = async () => {
-  if (user.value.role !== 'customer') {
-    returnRequests.value = []
-    return
-  }
-
   returnRequestsLoading.value = true
   returnRequestsError.value = ''
 
   try {
-    const res = await getMyReturnRequests()
-    returnRequests.value = res.data.returnRequests || []
+    returnRequests.value = await loadCustomerReturnRequests({
+      userRole: user.value.role,
+      getMyReturnRequests,
+    })
   } catch (err) {
     returnRequestsError.value = err?.response?.data?.message || 'Failed to load return requests. Please try again.'
   } finally {
@@ -1206,31 +1211,19 @@ const getReturnRequestsForOrder = (orderId) => {
 }
 
 const getPendingReturnQuantityForItem = (orderId, productId) => {
-  return returnRequests.value
-    .filter((request) => request.orderId === orderId && request.status === 'pending')
-    .flatMap((request) => request.items || [])
-    .filter((item) => item.productId === productId)
-    .reduce((total, item) => total + Number(item.quantity || 0), 0)
+  return getPendingReturnQuantityForItemFromRequests(returnRequests.value, orderId, productId)
 }
 
 const getApprovedReturnedQuantityForItem = (orderId, productId) => {
-  return returnRequests.value
-    .filter((request) => request.orderId === orderId && request.status === 'approved')
-    .flatMap((request) => request.items || [])
-    .filter((item) => item.productId === productId)
-    .reduce((total, item) => total + Number(item.quantity || 0), 0)
+  return getApprovedReturnedQuantityForItemFromRequests(returnRequests.value, orderId, productId)
 }
 
 const hasPendingReturnForItem = (orderId, productId) => {
-  return returnRequests.value.some((request) =>
-    request.orderId === orderId &&
-    request.status === 'pending' &&
-    (request.items || []).some((item) => item.productId === productId)
-  )
+  return hasPendingReturnForItemFromRequests(returnRequests.value, orderId, productId)
 }
 
 const getRemainingReturnQuantity = (order, item) => {
-  return Math.max(0, Number(item.quantity || 0) - getApprovedReturnedQuantityForItem(order.id, item.productId))
+  return getRemainingReturnQuantityFromRequests(returnRequests.value, order, item)
 }
 
 const isItemFullyReturned = (order, item) => {
@@ -1247,64 +1240,39 @@ const getReviewButtonLabel = (order, item) => {
 }
 
 const getReturnWindowDeadline = (order) => {
-  if (!order.paidAt) return null
-  const paidAt = new Date(order.paidAt)
-  if (Number.isNaN(paidAt.getTime())) return null
-
-  const deadline = new Date(paidAt)
-  deadline.setDate(deadline.getDate() + 30)
-  return deadline
+  return getReturnWindowDeadlineForOrder(order)
 }
 
 const isWithinReturnWindow = (order) => {
-  const deadline = getReturnWindowDeadline(order)
-  return Boolean(deadline && Date.now() <= deadline.getTime())
+  return isWithinReturnWindowForOrder(order)
 }
 
 const getReturnEligibilityStatus = (order, item) => {
-  if (user.value.role !== 'customer' || order.status !== 'paid') return null
-  if (order.deliveryStatus !== 'delivered') {
-    return { eligible: false, label: 'Return available after delivery' }
-  }
-  if (!isWithinReturnWindow(order)) {
-    return { eligible: false, label: 'Return window expired' }
-  }
-  if (hasPendingReturnForItem(order.id, item.productId)) {
-    return {
-      eligible: false,
-      label: `Return pending for ${getPendingReturnQuantityForItem(order.id, item.productId)} item(s)`,
-    }
-  }
-  if (getRemainingReturnQuantity(order, item) <= 0) {
-    const approvedQuantity = getApprovedReturnedQuantityForItem(order.id, item.productId)
-    if (approvedQuantity >= Number(item.quantity || 0)) {
-      return { eligible: false, label: 'Fully returned' }
-    }
-
-    return { eligible: false, label: 'Fully returned' }
-  }
-
-  const deadline = getReturnWindowDeadline(order)
-  return { eligible: true, label: `Return eligible until ${formatDate(deadline)}` }
+  return getReturnEligibilityStatusForItem({
+    userRole: user.value.role,
+    order,
+    item,
+    returnRequests: returnRequests.value,
+    formatDate,
+  })
 }
 
 const canRequestReturn = (order, item) => {
-  return user.value.role === 'customer' &&
-    order.status === 'paid' &&
-    order.deliveryStatus === 'delivered' &&
-    isWithinReturnWindow(order) &&
-    !hasPendingReturnForItem(order.id, item.productId) &&
-    getRemainingReturnQuantity(order, item) > 0
+  return canRequestReturnForItem({
+    userRole: user.value.role,
+    order,
+    item,
+    returnRequests: returnRequests.value,
+  })
 }
 
 const startReturnRequest = (order, item) => {
   clearReturnPhotoPreviews()
   returnFormError.value = ''
   returnForm.value = {
+    ...createEmptyReturnForm(),
     orderId: order.id,
     items: [{ productId: item.productId, quantity: 1 }],
-    reason: '',
-    photos: [],
   }
 }
 
@@ -1319,12 +1287,7 @@ const getReturnPhotoInput = () => {
 const cancelReturnRequest = () => {
   clearReturnPhotoPreviews()
   returnFormError.value = ''
-  returnForm.value = {
-    orderId: '',
-    items: [],
-    reason: '',
-    photos: [],
-  }
+  returnForm.value = createEmptyReturnForm()
   const input = getReturnPhotoInput()
   if (input) {
     input.value = ''
@@ -1471,53 +1434,22 @@ const removeReturnPhoto = (preview) => {
 
 const handleSubmitReturnRequest = async (order) => {
   returnFormError.value = ''
-
-  if (returnForm.value.items.length === 0) {
-    returnFormError.value = 'Select at least one item to return.'
-    return
-  }
-
-  const invalidQuantityItem = returnForm.value.items.find((returnItem) => {
-    const orderedItem = order.items.find((item) => item.productId === returnItem.productId)
-    const quantity = Number(returnItem.quantity)
-    const maxQuantity = orderedItem ? getRemainingReturnQuantity(order, orderedItem) : 0
-    return !Number.isInteger(quantity) ||
-      quantity < 1 ||
-      quantity > maxQuantity
-  })
-
-  if (invalidQuantityItem) {
-    returnFormError.value = 'Enter a valid return quantity for each selected item.'
-    return
-  }
-
-  const reason = returnForm.value.reason.trim()
-
-  if (!reason) {
-    returnFormError.value = 'Enter a return reason.'
-    return
-  }
-
   submittingReturn.value = true
 
   try {
-    const formData = new FormData()
-    formData.append('orderId', order.id)
-    formData.append('reason', reason)
-    formData.append('items', JSON.stringify(returnForm.value.items.map((item) => ({
-        productId: item.productId,
-        quantity: Number(item.quantity),
-      }))))
-
-    returnForm.value.photos.forEach((photo) => {
-      formData.append('photos', photo.file)
+    await submitReturnRequestFlow({
+      order,
+      returnForm: returnForm.value,
+      returnRequests: returnRequests.value,
+      submitReturnRequest,
+      fetchReturnRequests,
+      resetReturnForm: cancelReturnRequest,
     })
-
-    await submitReturnRequest(formData)
-    cancelReturnRequest()
-    await fetchReturnRequests()
   } catch (err) {
-    returnFormError.value = err?.response?.data?.message || 'Failed to submit return request. Please try again.'
+    returnFormError.value =
+      err?.response?.data?.message ||
+      err?.message ||
+      'Failed to submit return request. Please try again.'
   } finally {
     submittingReturn.value = false
   }
