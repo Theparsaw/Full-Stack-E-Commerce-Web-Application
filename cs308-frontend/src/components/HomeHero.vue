@@ -40,10 +40,10 @@
         <div class="relative z-10 flex min-h-[34rem] flex-col p-7 md:min-h-[37rem] md:p-8 lg:p-10">
           <div class="flex max-w-2xl flex-1 flex-col">
             <div class="min-h-[13rem] md:min-h-[15rem] lg:min-h-[16.5rem]">
-              <p class="mb-4 text-sm font-semibold uppercase tracking-[0.35em] text-orange-300">
+              <p class="font-hero-eyebrow mb-4 uppercase tracking-[0.35em] text-orange-300">
                 {{ activeSlide.eyebrow }}
               </p>
-              <h1 class="mb-5 text-4xl font-bold leading-tight text-white md:text-6xl">
+              <h1 class="font-hero-title mb-5 text-white">
                 {{ activeSlide.title }}
               </h1>
               <p class="max-w-xl text-base leading-7 text-stone-200 md:text-lg">
@@ -66,7 +66,7 @@
           </div>
 
           <div class="mt-8 w-full max-w-sm min-h-[15rem] rounded-[1.75rem] border border-white/12 bg-black/24 p-4 backdrop-blur-md md:mt-10">
-            <p class="text-xs uppercase tracking-[0.35em] text-orange-200">Live promotions</p>
+            <p class="font-hero-panel-label uppercase tracking-[0.35em] text-orange-200">Live promotions</p>
             <div class="mt-4 flex items-center gap-3">
               <button
                 type="button"

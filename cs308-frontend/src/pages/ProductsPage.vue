@@ -32,7 +32,7 @@
 
       <section class="mb-8">
         <div class="flex items-center justify-between mb-4">
-          <h2 class="text-2xl font-bold text-gray-900">Categories</h2>
+          <h2 class="font-catalog-section-title text-gray-900">Categories</h2>
           <button
             v-if="selectedCategories.length > 0"
             @click="selectedCategories = []"
