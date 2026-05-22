@@ -1,7 +1,7 @@
 <template>
   <section class="mb-10" v-if="products && products.length">
     <div class="flex items-center justify-between mb-4">
-      <h2 class="text-2xl font-bold text-gray-900">{{ title }}</h2>
+      <h2 class="font-catalog-section-title text-gray-900">{{ title }}</h2>
       <span class="text-sm text-gray-500">{{ products.length }} products</span>
     </div>
 
@@ -11,10 +11,11 @@
         :key="product.productId"
         class="group relative flex min-w-0"
       >
-        <WishlistButton
-          :product-id="product.productId"
-          class="absolute right-3 top-3 z-20 opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-focus-within:opacity-100"
-        />
+        <div
+          class="pointer-events-none absolute right-3 top-3 z-20 opacity-0 transition-all duration-300 group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100"
+        >
+          <WishlistButton :product-id="product.productId" />
+        </div>
 
         <router-link
           :to="`/products/${product.productId}`"
@@ -24,12 +25,12 @@
             class="pointer-events-none absolute inset-0 z-10 rounded-2xl bg-slate-950/0 transition-colors duration-200 group-hover:bg-slate-950/35 group-focus-within:bg-slate-950/35"
           />
 
-          <div class="aspect-[4/3] rounded-xl bg-gray-100 mb-4 overflow-hidden">
+          <div class="relative aspect-[4/3] rounded-xl bg-gray-100 mb-4 overflow-hidden">
             <img
               v-if="product.imageUrl"
               :src="product.imageUrl"
               :alt="`${product.model} by ${product.name}`"
-              class="w-full h-full object-cover"
+              class="w-full h-full object-contain"
             />
             <div
               v-else
@@ -37,17 +38,26 @@
             >
               No Image
             </div>
+
+            <div
+              class="pointer-events-none absolute inset-x-0 bottom-[30px] z-20 flex justify-center opacity-0 transition-all duration-300 group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100"
+            >
+              <ProductCardAddToCartButton
+                :product="product"
+                class="translate-x-3 scale-95 group-hover:translate-x-0 group-hover:scale-100 group-focus-within:translate-x-0 group-focus-within:scale-100"
+              />
+            </div>
           </div>
 
           <p class="text-xs text-orange-600 font-semibold mb-1 capitalize">
             {{ getCategoryLabel(product.categoryId) }}
           </p>
 
-          <p class="text-xs font-medium text-gray-500 mb-1">
+          <p class="font-product-meta text-gray-500 mb-1">
             Product ID: {{ product.productId }}
           </p>
 
-          <h3 class="font-semibold text-gray-900 line-clamp-2 min-h-[48px]">
+          <h3 class="font-product-card-title text-gray-900 line-clamp-2 min-h-[48px]">
             {{ product.model }}
           </h3>
 
@@ -69,7 +79,7 @@
               </p>
 
               <div class="flex items-center gap-2">
-                <p class="text-lg font-bold text-red-600">
+                <p class="font-product-grid-price text-red-600">
                   ${{ Number(product.discountedPrice).toLocaleString() }}
                 </p>
 
@@ -82,7 +92,7 @@
             </div>
 
             <div v-else>
-              <p class="text-lg font-bold text-orange-600">
+              <p class="font-product-grid-price text-orange-600">
                 ${{ Number(product.price).toLocaleString() }}
               </p>
             </div>
@@ -97,6 +107,7 @@
 </template>
 
 <script setup>
+import ProductCardAddToCartButton from "./ProductCardAddToCartButton.vue"
 import WishlistButton from "./WishlistButton.vue"
 
 defineProps({
