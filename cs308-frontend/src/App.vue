@@ -55,7 +55,7 @@
           </div>
         </div>
 
-        <router-link to="/" class="text-2xl font-bold text-orange-600 shrink-0">
+        <router-link to="/" class="font-brand text-orange-600 shrink-0">
           CS308 Store
         </router-link>
 
@@ -113,36 +113,131 @@
               {{ cartStore.totalItems }}
             </span>
           </router-link>
-          <router-link
+          <div
             v-if="authStore.isLoggedIn && authStore.role === 'customer'"
-            to="/notifications"
-            class="relative flex h-11 w-11 items-center justify-center rounded-xl border border-orange-200 bg-white/72 text-slate-800 backdrop-blur transition hover:border-orange-300 hover:bg-white/90"
-            aria-label="Open notifications"
-            title="Open notifications"
+            class="relative"
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              class="h-5 w-5 text-slate-700"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              stroke-width="1.8"
-              aria-hidden="true"
+            <div
+              class="group relative"
+              @mouseenter="refreshNotifications"
+              @focusin="refreshNotifications"
             >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                d="M14.857 17.082a2.75 2.75 0 01-5.714 0M18 8.25A6 6 0 006 8.25c0 7-3 7.75-3 7.75h18s-3-.75-3-7.75z"
-              />
-            </svg>
+              <router-link
+                to="/notifications"
+                class="relative flex h-11 w-11 items-center justify-center rounded-xl border border-orange-200 bg-white/72 text-slate-800 backdrop-blur transition hover:border-orange-300 hover:bg-white/90"
+                aria-label="Open notifications"
+                title="Open notifications"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="h-5 w-5 text-slate-700"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  aria-hidden="true"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M14.857 17.082a2.75 2.75 0 01-5.714 0M18 8.25A6 6 0 006 8.25c0 7-3 7.75-3 7.75h18s-3-.75-3-7.75z"
+                  />
+                </svg>
 
-            <span
-              v-if="notificationStore.unreadCount > 0"
-              class="absolute -right-2 -top-2 inline-flex min-w-6 items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-xs font-semibold text-white"
-            >
-              {{ notificationStore.unreadCount }}
-            </span>
-          </router-link>
+                <span
+                  v-if="notificationStore.unreadCount > 0"
+                  class="absolute -right-2 -top-2 inline-flex min-w-6 items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-xs font-semibold text-white"
+                >
+                  {{ notificationStore.unreadCount }}
+                </span>
+              </router-link>
+
+              <div
+                class="pointer-events-none invisible absolute right-0 top-full z-50 w-96 translate-y-2 pt-3 opacity-0 transition duration-200 group-hover:pointer-events-auto group-hover:visible group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:visible group-focus-within:translate-y-0 group-focus-within:opacity-100"
+              >
+                <div class="rounded-2xl border border-orange-100 bg-white p-4 shadow-xl">
+                  <div class="mb-3 flex items-center justify-between gap-3">
+                    <div>
+                      <p class="text-sm font-semibold text-gray-900">Notifications</p>
+                      <p class="text-xs text-gray-500">{{ notificationPreviewSummary }}</p>
+                    </div>
+
+                    <router-link
+                      to="/notifications"
+                      class="text-xs font-medium text-orange-500 transition hover:text-orange-600"
+                    >
+                      See all
+                    </router-link>
+                  </div>
+
+                  <div
+                    v-if="notificationStore.loading"
+                    class="rounded-xl border border-dashed border-orange-100 bg-orange-50/60 px-4 py-5 text-sm text-gray-500"
+                  >
+                    Loading notifications...
+                  </div>
+
+                  <div
+                    v-else-if="notificationPreviewItems.length === 0"
+                    class="rounded-xl border border-dashed border-orange-100 bg-orange-50/60 px-4 py-5 text-sm text-gray-500"
+                  >
+                    You're all caught up.
+                  </div>
+
+                  <div v-else class="space-y-3">
+                    <article
+                      v-for="notification in notificationPreviewItems"
+                      :key="notification._id"
+                      class="rounded-xl border px-3 py-3 transition"
+                      :class="notification.isRead ? 'border-gray-100 bg-white' : 'border-orange-200 bg-orange-50/70'"
+                    >
+                      <div class="flex items-start justify-between gap-3">
+                        <div class="min-w-0 flex-1">
+                          <div class="flex items-center gap-2">
+                            <span
+                              v-if="!notification.isRead"
+                              class="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-orange-500"
+                            />
+                            <p class="truncate text-sm font-semibold text-gray-900">
+                              {{ getNotificationTitle(notification) }}
+                            </p>
+                          </div>
+
+                          <p class="mt-1 text-sm text-gray-600">
+                            {{ notification.message }}
+                          </p>
+
+                          <div class="mt-2 flex flex-wrap items-center gap-2 text-xs text-gray-500">
+                            <span class="rounded-full bg-white px-2 py-1 font-medium text-orange-600 ring-1 ring-orange-100">
+                              -{{ notification.discountPercentage }}%
+                            </span>
+                            <span>{{ formatNotificationTimestamp(notification.createdAt) }}</span>
+                            <span v-if="notification.isRead" class="text-green-600">Read</span>
+                          </div>
+                        </div>
+
+                        <button
+                          v-if="!notification.isRead"
+                          type="button"
+                          class="shrink-0 rounded-lg border border-orange-200 bg-white px-2.5 py-1.5 text-xs font-medium text-orange-600 transition hover:border-orange-300 hover:bg-orange-50"
+                          @click.stop="notificationStore.markAsRead(notification._id)"
+                        >
+                          Mark read
+                        </button>
+                      </div>
+                    </article>
+
+                    <router-link
+                      to="/notifications"
+                      class="block rounded-xl border border-orange-100 bg-orange-50/60 px-4 py-3 text-center text-sm font-medium text-orange-600 transition hover:border-orange-200 hover:bg-orange-100/70"
+                    >
+                      Open notification center<span v-if="notificationOverflowCount > 0"> and {{ notificationOverflowCount }} more</span>
+                    </router-link>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
 
           <router-link
             v-if="!authStore.isLoggedIn"
@@ -310,7 +405,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, watch, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, watch, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { resolveAssetUrl } from './api/authApi'
 import { getCart, resetCartId } from './api/cartApi'
@@ -417,6 +512,26 @@ const wishlistPreviewCounter = computed(() =>
     ? '4+ more'
     : `${wishlistPreviewItems.value.length} ${wishlistPreviewItems.value.length === 1 ? 'item' : 'items'}`
 )
+const notificationPreviewItems = computed(() => notificationStore.notifications.slice(0, 4))
+const notificationOverflowCount = computed(() =>
+  Math.max(notificationStore.notifications.length - notificationPreviewItems.value.length, 0)
+)
+const notificationPreviewSummary = computed(() => {
+  if (notificationStore.loading) {
+    return 'Checking for updates'
+  }
+
+  if (notificationStore.unreadCount > 0) {
+    return `${notificationStore.unreadCount} unread ${notificationStore.unreadCount === 1 ? 'notification' : 'notifications'}`
+  }
+
+  if (notificationStore.notifications.length > 0) {
+    return `${notificationPreviewItems.value.length} recent ${notificationPreviewItems.value.length === 1 ? 'update' : 'updates'}`
+  }
+
+  return 'You are all caught up'
+})
+const relativeTimeFormatter = new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' })
 
 const setSort = (value) => {
   const query = { ...route.query }
@@ -429,6 +544,44 @@ const setSort = (value) => {
 }
 
 const getProfileImageUrl = (value) => resolveAssetUrl(value)
+const getNotificationTitle = (notification) => notification?.productName || 'Discount alert'
+const refreshNotifications = () => {
+  if (
+    authStore.isLoggedIn &&
+    authStore.role === 'customer'
+  ) {
+    notificationStore.requestRefresh().catch(() => {})
+  }
+}
+const formatNotificationTimestamp = (value) => {
+  if (!value) return ''
+
+  const date = new Date(value)
+
+  if (Number.isNaN(date.getTime())) {
+    return ''
+  }
+
+  const minutes = Math.round((date.getTime() - Date.now()) / 60000)
+
+  if (Math.abs(minutes) < 60) {
+    return relativeTimeFormatter.format(minutes, 'minute')
+  }
+
+  const hours = Math.round(minutes / 60)
+
+  if (Math.abs(hours) < 24) {
+    return relativeTimeFormatter.format(hours, 'hour')
+  }
+
+  const days = Math.round(hours / 24)
+
+  if (Math.abs(days) < 7) {
+    return relativeTimeFormatter.format(days, 'day')
+  }
+
+  return date.toLocaleDateString()
+}
 
 const syncCartCount = async () => {
   try {
@@ -444,6 +597,7 @@ const handleLogout = () => {
   cartStore.clear()
   resetCartId()
   wishlistStore.clear()
+  notificationStore.clear()
   router.push('/login')
 }
 
@@ -484,9 +638,12 @@ watch(
   () => {
     syncCartCount()
     wishlistStore.clear()
+    notificationStore.clear()
 
     if (authStore.isLoggedIn && authStore.role === 'customer') {
       wishlistStore.ensureLoaded().catch(() => {})
+      notificationStore.startAutoRefresh()
+      notificationStore.loadNotifications().catch(() => {})
     }
   },
   { immediate: true }
@@ -497,9 +654,16 @@ onMounted(() => {
 
   if (
     authStore.isLoggedIn &&
-    authStore.role === 'customer'
+    authStore.role === 'customer' &&
+    notificationStore.notifications.length === 0 &&
+    !notificationStore.loading
   ) {
+    notificationStore.startAutoRefresh()
     notificationStore.loadNotifications()
   }
+})
+
+onBeforeUnmount(() => {
+  notificationStore.stopAutoRefresh()
 })
 </script>
