@@ -1,4 +1,4 @@
-import api from './productApi'
+import api, { resolveAssetUrl } from './productApi'
 import { authStore } from '../store/auth'
 
 const CART_ID_KEY = 'guest-cart-id'
@@ -13,10 +13,24 @@ const calculateTotalPrice = (items = []) =>
 
 const normalizeGuestCart = (cartId, items = []) => ({
   cartId,
-  items,
+  items: items.map((item) => ({
+    ...item,
+    imageUrl: resolveAssetUrl(item.imageUrl),
+  })),
   totalItems: calculateTotalItems(items),
   totalPrice: calculateTotalPrice(items),
 })
+
+const normalizeCartResponse = (response) => {
+  if (Array.isArray(response.data?.items)) {
+    response.data.items = response.data.items.map((item) => ({
+      ...item,
+      imageUrl: resolveAssetUrl(item.imageUrl),
+    }))
+  }
+
+  return response
+}
 
 const createInsufficientStockError = (availableStock) => {
   const error = new Error('Requested quantity exceeds available stock')
@@ -150,16 +164,17 @@ const resolveGuestCartResponse = (items) => {
   })
 }
 
-const getServerCart = (cartId = getCartId()) => api.get(`/cart/${cartId}`)
+const getServerCart = (cartId = getCartId()) =>
+  api.get(`/cart/${cartId}`).then(normalizeCartResponse)
 
 const addServerItemToCart = (productId, quantity = 1, cartId = getCartId()) =>
-  api.post(`/cart/${cartId}/items`, { productId, quantity })
+  api.post(`/cart/${cartId}/items`, { productId, quantity }).then(normalizeCartResponse)
 
 const updateServerCartItemQuantity = (productId, quantity, cartId = getCartId()) =>
-  api.patch(`/cart/${cartId}/items/${productId}`, { quantity })
+  api.patch(`/cart/${cartId}/items/${productId}`, { quantity }).then(normalizeCartResponse)
 
 const removeServerCartItem = (productId, cartId = getCartId()) =>
-  api.delete(`/cart/${cartId}/items/${productId}`)
+  api.delete(`/cart/${cartId}/items/${productId}`).then(normalizeCartResponse)
 
 export const getGuestCart = () =>
   Promise.resolve({

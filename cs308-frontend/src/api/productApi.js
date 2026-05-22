@@ -5,6 +5,54 @@ const api = axios.create({
   baseURL: "http://localhost:5001/api",
 });
 
+export const resolveAssetUrl = (value) => {
+  if (!value || typeof value !== "string") return value;
+  if (
+    value.startsWith("http://") ||
+    value.startsWith("https://") ||
+    value.startsWith("data:") ||
+    value.startsWith("blob:")
+  ) {
+    return value;
+  }
+
+  return `http://localhost:5001${value}`;
+};
+
+const normalizeProduct = (product) => {
+  if (!product || typeof product !== "object") return product;
+  return {
+    ...product,
+    imageUrl: resolveAssetUrl(product.imageUrl),
+  };
+};
+
+const normalizeProductResponse = (response) => {
+  if (Array.isArray(response.data)) {
+    response.data = response.data.map(normalizeProduct);
+  } else if (response.data?.product) {
+    response.data.product = normalizeProduct(response.data.product);
+  } else if (response.data?.productId) {
+    response.data = normalizeProduct(response.data);
+  }
+
+  return response;
+};
+
+const buildProductPayload = (data) => {
+  if (!data?.imageFile) return data;
+
+  const formData = new FormData();
+
+  Object.entries(data).forEach(([key, value]) => {
+    if (key === "imageFile" || value === undefined || value === null) return;
+    formData.append(key, value);
+  });
+
+  formData.append("productImage", data.imageFile);
+  return formData;
+};
+
 api.interceptors.request.use((config) => {
   if (authStore.token) {
     config.headers.Authorization = `Bearer ${authStore.token}`;
@@ -50,12 +98,15 @@ export const getProducts = (search = "", sort = "") => {
     params.sort = sort.trim();
   }
 
-  return api.get("/products", { params });
+  return api.get("/products", { params }).then(normalizeProductResponse);
 };
 
-export const getProductById = (id) => api.get(`/products/${id}`);
-export const createProduct = (data) => api.post("/products", data);
-export const updateProduct = (id, data) => api.put(`/products/${id}`, data);
+export const getProductById = (id) =>
+  api.get(`/products/${id}`).then(normalizeProductResponse);
+export const createProduct = (data) =>
+  api.post("/products", buildProductPayload(data)).then(normalizeProductResponse);
+export const updateProduct = (id, data) =>
+  api.put(`/products/${id}`, buildProductPayload(data)).then(normalizeProductResponse);
 export const updateProductPrice = (id, price) =>
   api.put(`/products/${id}/price`, { price });
 export const deleteProduct = (id) => api.delete(`/products/${id}`);

@@ -11,11 +11,12 @@ const {
 } = require("../controllers/productController");
 
 const { authMiddleware, authorize } = require("../middleware/authMiddleware");
+const { uploadProductImage } = require("../middleware/uploadMiddleware");
 
 router
   .route("/")
   .get(getAllProducts)
-  .post(authMiddleware, authorize("product_manager"), createProduct);
+  .post(authMiddleware, authorize("product_manager"), uploadProductImage.single("productImage"), createProduct);
 
 router
   .route("/:id/price")
@@ -24,7 +25,7 @@ router
 router
   .route("/:id")
   .get(getProductById)
-  .put(authMiddleware, authorize("product_manager"), updateProduct)
+  .put(authMiddleware, authorize("product_manager"), uploadProductImage.single("productImage"), updateProduct)
   .delete(authMiddleware, authorize("product_manager"), deleteProduct);
 
 module.exports = router;

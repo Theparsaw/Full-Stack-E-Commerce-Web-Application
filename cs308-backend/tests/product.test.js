@@ -1,10 +1,26 @@
 const request = require("supertest");
 const mongoose = require("mongoose");
+const fs = require("fs/promises");
+const path = require("path");
 const app = require("../server");
 const User = require("../models/User");
+const Product = require("../models/Product");
 const bcrypt = require("bcrypt");
 
 const managerEmail = `manager-${Date.now()}@example.com`;
+const imageProductId = `p-image-${Date.now()}`;
+const imageProductSerial = `IMG-TEST-${Date.now()}`;
+const uploadProductId = `p-upload-${Date.now()}`;
+const uploadProductSerial = `UPLOAD-TEST-${Date.now()}`;
+
+const cleanupProductImage = async (productId) => {
+  const product = await Product.findOne({ productId }).lean();
+  if (!product?.imageUrl?.startsWith("/uploads/product-images/")) return;
+
+  await fs.rm(path.join(__dirname, "..", product.imageUrl.replace(/^\//, "")), {
+    force: true,
+  });
+};
 
 beforeAll(async () => {
   const password = await bcrypt.hash("ManagerPass123!", 10);
@@ -18,6 +34,9 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await User.deleteMany({ email: managerEmail });
+  await cleanupProductImage(imageProductId);
+  await cleanupProductImage(uploadProductId);
+  await Product.deleteMany({ productId: { $in: [imageProductId, uploadProductId] } });
   await mongoose.connection.close();
 });
 
@@ -202,6 +221,97 @@ describe("Product API Endpoints (safe, non-polluting tests)", () => {
 
     expect(res.statusCode).toBe(400);
     expect(res.body.message).toBe("A product with this serial number already exists");
+  });
+
+  test("POST /api/products saves imageUrl for new products", async () => {
+    const loginRes = await request(app).post("/api/auth/login").send({
+      email: managerEmail,
+      password: "ManagerPass123!",
+    });
+
+    const imageUrl = "https://example.com/new-product.png";
+    const res = await request(app)
+      .post("/api/products")
+      .set("Authorization", `Bearer ${loginRes.body.token}`)
+      .send({
+        productId: imageProductId,
+        categoryId: "cat1",
+        name: "Image Brand",
+        model: "Image Model",
+        serialNumber: imageProductSerial,
+        description: "Product created to verify image URL persistence",
+        quantityInStock: 1,
+        price: 10,
+        warrantyStatus: "1 year warranty",
+        distributorInfo: "Test Distributor",
+        imageUrl,
+      });
+
+    expect(res.statusCode).toBe(201);
+    expect(res.body.product.imageUrl).toBe(imageUrl);
+  });
+
+  test("POST /api/products saves an uploaded product image for new products", async () => {
+    const loginRes = await request(app).post("/api/auth/login").send({
+      email: managerEmail,
+      password: "ManagerPass123!",
+    });
+
+    const res = await request(app)
+      .post("/api/products")
+      .set("Authorization", `Bearer ${loginRes.body.token}`)
+      .field("productId", uploadProductId)
+      .field("categoryId", "cat1")
+      .field("name", "Upload Brand")
+      .field("model", "Upload Model")
+      .field("serialNumber", uploadProductSerial)
+      .field("description", "Product created to verify uploaded image persistence")
+      .field("quantityInStock", "1")
+      .field("price", "10")
+      .field("warrantyStatus", "1 year warranty")
+      .field("distributorInfo", "Test Distributor")
+      .attach("productImage", Buffer.from("fake image bytes"), {
+        filename: "product.png",
+        contentType: "image/png",
+      });
+
+    expect(res.statusCode).toBe(201);
+    expect(res.body.product.imageUrl).toMatch(/^\/uploads\/product-images\/product-/);
+  });
+
+  test("PUT /api/products/:id updates imageUrl for existing products", async () => {
+    const loginRes = await request(app).post("/api/auth/login").send({
+      email: managerEmail,
+      password: "ManagerPass123!",
+    });
+
+    const imageUrl = "https://example.com/updated-product.png";
+    const res = await request(app)
+      .put(`/api/products/${imageProductId}`)
+      .set("Authorization", `Bearer ${loginRes.body.token}`)
+      .send({ imageUrl });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body.product.imageUrl).toBe(imageUrl);
+  });
+
+  test("PUT /api/products/:id updates imageUrl from an uploaded product image", async () => {
+    const loginRes = await request(app).post("/api/auth/login").send({
+      email: managerEmail,
+      password: "ManagerPass123!",
+    });
+
+    const res = await request(app)
+      .put(`/api/products/${imageProductId}`)
+      .set("Authorization", `Bearer ${loginRes.body.token}`)
+      .attach("productImage", Buffer.from("updated fake image bytes"), {
+        filename: "updated-product.webp",
+        contentType: "image/webp",
+      });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body.product.imageUrl).toMatch(/^\/uploads\/product-images\/product-/);
+    expect(res.body.product.imageUrl).toMatch(/\.webp$/);
   });
 
   // PUT /api/products/:id

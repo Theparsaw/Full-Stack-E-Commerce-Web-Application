@@ -5,10 +5,12 @@ const AppError = require("../utils/appError");
 
 const profileUploadsDir = path.join(__dirname, "..", "uploads", "profile-images");
 const returnUploadsDir = path.join(__dirname, "..", "uploads", "return-photos");
+const productUploadsDir = path.join(__dirname, "..", "uploads", "product-images");
 
 // Make sure the upload folder exists before multer tries to write files into it
 fs.mkdirSync(profileUploadsDir, { recursive: true });
 fs.mkdirSync(returnUploadsDir, { recursive: true });
+fs.mkdirSync(productUploadsDir, { recursive: true });
 
 const createImageStorage = (uploadsDir, prefix) => multer.diskStorage({
   destination: (_req, _file, cb) => {
@@ -45,7 +47,16 @@ const uploadReturnPhotos = multer({
   },
 });
 
+const uploadProductImage = multer({
+  storage: createImageStorage(productUploadsDir, "product"),
+  fileFilter,
+  limits: {
+    fileSize: 5 * 1024 * 1024,
+  },
+});
+
 module.exports = {
   uploadProfilePhoto,
   uploadReturnPhotos,
+  uploadProductImage,
 };

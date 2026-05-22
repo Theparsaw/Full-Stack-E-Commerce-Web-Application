@@ -1,5 +1,5 @@
 <template>
-  <div class="p-6 max-w-4xl">
+  <div class="p-6 max-w-7xl">
     <h1 class="text-3xl font-bold mb-6">Add Product</h1>
 
     <p v-if="error" class="mb-4 text-red-600">{{ error }}</p>

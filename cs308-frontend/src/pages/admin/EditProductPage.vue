@@ -1,5 +1,5 @@
 <template>
-  <div class="p-6 max-w-4xl">
+  <div class="p-6 max-w-7xl">
     <h1 class="text-3xl font-bold mb-6">Edit Product</h1>
 
     <div v-if="loading" class="text-gray-600">Loading...</div>
