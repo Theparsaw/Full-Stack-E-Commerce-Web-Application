@@ -1,23 +1,12 @@
 import axios from "axios";
 import { authStore } from "../store/auth";
+import { API_BASE_URL, resolveBackendAssetUrl } from "./config";
 
 const api = axios.create({
-  baseURL: "http://localhost:5001/api",
+  baseURL: API_BASE_URL,
 });
 
-export const resolveAssetUrl = (value) => {
-  if (!value || typeof value !== "string") return value;
-  if (
-    value.startsWith("http://") ||
-    value.startsWith("https://") ||
-    value.startsWith("data:") ||
-    value.startsWith("blob:")
-  ) {
-    return value;
-  }
-
-  return `http://localhost:5001${value}`;
-};
+export const resolveAssetUrl = resolveBackendAssetUrl;
 
 const normalizeProduct = (product) => {
   if (!product || typeof product !== "object") return product;

@@ -1,24 +1,13 @@
 import axios from 'axios'
+import { API_BASE_URL, resolveBackendAssetUrl } from './config'
 
 // Create an axios instance pointing to our backend
 const api = axios.create({
-  baseURL: 'http://localhost:5001/api',
+  baseURL: API_BASE_URL,
 })
 
 // Convert backend-relative upload paths into browser-friendly image URLs
-export const resolveAssetUrl = (value) => {
-  if (!value) return ''
-  if (
-    value.startsWith('http://') ||
-    value.startsWith('https://') ||
-    value.startsWith('data:') ||
-    value.startsWith('blob:')
-  ) {
-    return value
-  }
-
-  return `http://localhost:5001${value}`
-}
+export const resolveAssetUrl = resolveBackendAssetUrl
 
 // Send registration data to the backend
 export const registerUser = (data) => api.post('/auth/register', data)

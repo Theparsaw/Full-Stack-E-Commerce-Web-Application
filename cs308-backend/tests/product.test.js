@@ -2,6 +2,36 @@ const request = require("supertest");
 const mongoose = require("mongoose");
 const fs = require("fs/promises");
 const path = require("path");
+
+process.env.CLOUDINARY_CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME || "test-cloud";
+process.env.CLOUDINARY_API_KEY = process.env.CLOUDINARY_API_KEY || "test-key";
+process.env.CLOUDINARY_API_SECRET = process.env.CLOUDINARY_API_SECRET || "test-secret";
+
+jest.mock("cloudinary", () => ({
+  v2: {
+    config: jest.fn(),
+    uploader: {
+      upload_stream: jest.fn((_options, callback) => {
+        const { Writable } = require("stream");
+        const writable = new Writable({
+          write(_chunk, _encoding, next) {
+            next();
+          },
+        });
+
+        writable.on("finish", () => {
+          callback(null, {
+            secure_url:
+              "https://res.cloudinary.com/test-cloud/image/upload/cs308-products/product-test.png",
+          });
+        });
+
+        return writable;
+      }),
+    },
+  },
+}));
+
 const app = require("../server");
 const User = require("../models/User");
 const Product = require("../models/Product");
@@ -276,7 +306,9 @@ describe("Product API Endpoints (safe, non-polluting tests)", () => {
       });
 
     expect(res.statusCode).toBe(201);
-    expect(res.body.product.imageUrl).toMatch(/^\/uploads\/product-images\/product-/);
+    expect(res.body.product.imageUrl).toBe(
+      "https://res.cloudinary.com/test-cloud/image/upload/cs308-products/product-test.png"
+    );
   });
 
   test("PUT /api/products/:id updates imageUrl for existing products", async () => {
@@ -310,8 +342,9 @@ describe("Product API Endpoints (safe, non-polluting tests)", () => {
       });
 
     expect(res.statusCode).toBe(200);
-    expect(res.body.product.imageUrl).toMatch(/^\/uploads\/product-images\/product-/);
-    expect(res.body.product.imageUrl).toMatch(/\.webp$/);
+    expect(res.body.product.imageUrl).toBe(
+      "https://res.cloudinary.com/test-cloud/image/upload/cs308-products/product-test.png"
+    );
   });
 
   // PUT /api/products/:id

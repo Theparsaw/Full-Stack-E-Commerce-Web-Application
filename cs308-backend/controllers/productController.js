@@ -5,6 +5,7 @@ const fs = require("fs/promises");
 const path = require("path");
 const AppError = require("../utils/appError");
 const asyncHandler = require("../utils/asyncHandler");
+const { uploadProductImageToCloudinary } = require("../utils/cloudinary");
 const { getDiscountedPrice } = require("../utils/discount");
 
 const deleteLocalProductImage = async (imagePath) => {
@@ -21,11 +22,6 @@ const deleteLocalProductImage = async (imagePath) => {
       console.error("Failed to delete old product image:", error);
     }
   }
-};
-
-const cleanupUploadedProductImage = async (file) => {
-  if (!file?.filename) return;
-  await deleteLocalProductImage(`/uploads/product-images/${file.filename}`);
 };
 
 const escapeRegex = (value) =>
@@ -418,7 +414,6 @@ const createProduct = asyncHandler(async (req, res) => {
 
   const existingProductId = await Product.findOne({ productId });
   if (existingProductId) {
-    await cleanupUploadedProductImage(req.file);
     throw new AppError(
       "A product with this productId already exists",
       400,
@@ -428,7 +423,6 @@ const createProduct = asyncHandler(async (req, res) => {
 
   const existingSerialNumber = await Product.findOne({ serialNumber });
   if (existingSerialNumber) {
-    await cleanupUploadedProductImage(req.file);
     throw new AppError(
       "A product with this serial number already exists",
       400,
@@ -436,9 +430,10 @@ const createProduct = asyncHandler(async (req, res) => {
     );
   }
 
-  const productImageUrl = req.file
-    ? `/uploads/product-images/${req.file.filename}`
-    : imageUrl;
+  const uploadedImage = req.file
+    ? await uploadProductImageToCloudinary(req.file)
+    : null;
+  const productImageUrl = uploadedImage?.secure_url || imageUrl;
 
   const product = await Product.create({
     productId,
@@ -483,7 +478,6 @@ const updateProduct = asyncHandler(async (req, res) => {
   if (serialNumber && serialNumber !== product.serialNumber) {
     const serialExists = await Product.findOne({ serialNumber });
     if (serialExists) {
-      await cleanupUploadedProductImage(req.file);
       throw new AppError(
         "Another product already uses this serial number",
         400,
@@ -503,8 +497,9 @@ const updateProduct = asyncHandler(async (req, res) => {
   product.distributorInfo = distributorInfo ?? product.distributorInfo;
 
   if (req.file) {
+    const uploadedImage = await uploadProductImageToCloudinary(req.file);
     await deleteLocalProductImage(product.imageUrl);
-    product.imageUrl = `/uploads/product-images/${req.file.filename}`;
+    product.imageUrl = uploadedImage.secure_url;
   } else if (imageUrl !== undefined) {
     product.imageUrl = imageUrl;
   }
