@@ -1,0 +1,405 @@
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Manrope:wght@400;500;600;700;800&family=Sora:wght@400;500;600;700;800&display=swap");
+
+:root {
+  --font-ui-family: "Sora", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-display-family: "Sora", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-data-family: "Manrope", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono-family: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+
+  /* This changes shared Tailwind text sizes and weights like text-sm, text-lg, font-semibold, and leading-6. */
+  /**/
+  --font-utility-text-xs-size: 0.75rem;    /* notification number  */
+  --font-utility-text-xs-line-height: 1rem; /* space between texts on product card and notification placement  */
+
+  --font-utility-text-sm-size: 0.875rem; /* search bar, top buttons, review text sizes  */
+  --font-utility-text-sm-line-height: 1.5rem;
+
+  --font-utility-text-base-size: 1rem;
+  --font-utility-text-base-line-height: 1.5rem;
+
+  --font-utility-text-lg-size: 1.125rem;
+  --font-utility-text-lg-line-height: 1.75rem;
+
+  --font-utility-text-xl-size: 1.25rem;
+  --font-utility-text-xl-line-height: 1.75rem;
+
+  --font-utility-text-2xl-size: 1.5rem;
+  --font-utility-text-2xl-line-height: 2rem;
+
+  --font-utility-text-3xl-size: 1.875rem;
+  --font-utility-text-3xl-line-height: 2.25rem;
+
+  --font-utility-font-medium-weight: 500;
+  --font-utility-font-semibold-weight: 600;
+  --font-utility-font-bold-weight: 700;
+
+  --font-utility-leading-6: 1.5rem;
+  --font-utility-leading-7: 1.75rem;
+
+  /* This changes the "CS308 Store" text at the top. */
+  --font-brand-family: var(--font-display-family);
+  --font-brand-size: 1.75rem;
+  --font-brand-weight: 700;
+  --font-brand-line-height: 3.5rem;
+
+  /* This changes the small top label in the homepage hero, like "LAPTOPS OFFER". */
+  --font-hero-eyebrow-family: var(--font-data-family);
+  --font-hero-eyebrow-size: 0.875rem;
+  --font-hero-eyebrow-weight: 800;
+  --font-hero-eyebrow-line-height: 1rem;
+
+  /* This changes ?? */
+  --font-hero-title-family: var(--font-display-family);
+  --font-hero-title-size: 2.25rem;
+  --font-hero-title-size-md: 5rem;
+  --font-hero-title-weight: 500;
+  --font-hero-title-line-height: 1.5;
+
+  /* This changes small labels inside the homepage hero card, like "LIVE PROMOTIONS". */
+  --font-hero-panel-label-family: var(--font-data-family);
+  --font-hero-panel-label-size: 0.75rem;
+  --font-hero-panel-label-weight: 400;
+  --font-hero-panel-label-line-height: 1.5rem;
+
+  /* This changes page titles like "My Profile" and "Notifications". */
+  --font-page-title-family: var(--font-display-family);
+  --font-page-title-size: 2.5rem;
+  --font-page-title-weight: 700;
+  --font-page-title-line-height: 2.25rem;
+
+  /* This changes catalog section titles like "Categories" and "All Products". */
+  --font-catalog-section-title-family: var(--font-display-family);
+  --font-catalog-section-title-size: 1.75rem;
+  --font-catalog-section-title-weight: 700;
+  --font-catalog-section-title-line-height: 2rem;
+
+  /* This changes section titles on detail pages, like "Customer Reviews" and "Your Review". */
+  --font-detail-section-title-family: var(--font-display-family);
+  --font-detail-section-title-size: 1.5rem;
+  --font-detail-section-title-weight: 600;
+  --font-detail-section-title-line-height: 1.5rem;
+
+  /* This changes font family, size, weight, and line-height of product names in the homepage grid. */
+  --font-product-card-title-family: var(--font-display-family);
+  --font-product-card-title-size: 1.55rem;
+  --font-product-card-title-weight: 600;
+  --font-product-card-title-line-height: 3rem;
+
+  /* This changes product ID text in product cards and under the detail title. */
+  --font-product-meta-family: var(--font-data-family);
+  --font-product-meta-size: 0.75rem;
+  --font-product-meta-weight: 500;
+  --font-product-meta-line-height: 1rem;
+
+  /* This changes the price text in the homepage product grid. */
+  --font-product-grid-price-family: var(--font-ui-family);
+  --font-product-grid-price-size: 1.125rem;
+  --font-product-grid-price-weight: 700;
+  --font-product-grid-price-line-height: 1.75rem;
+
+  /* This changes the main product title on the product detail page. */
+  --font-product-detail-title-family: var(--font-display-family);
+  --font-product-detail-title-size: 2.25rem;
+  --font-product-detail-title-weight: 700;
+  --font-product-detail-title-line-height: 2.25rem;
+
+  /* This changes the main price on the product detail page. */
+  --font-product-detail-price-family: var(--font-display-family);
+  --font-product-detail-price-size: 1.875rem;
+  --font-product-detail-price-weight: 700;
+  --font-product-detail-price-line-height: 2.25rem;
+
+  /* This changes product detail labels like "Brand", "Stock", and "Warranty". */
+  --font-product-detail-label-family: var(--font-data-family);
+  --font-product-detail-label-size: 0.875rem;
+  --font-product-detail-label-weight: 700;
+  --font-product-detail-label-line-height: 1rem;
+
+  /* This changes the values next to detail labels, like "Apple" or "6". */
+  --font-product-detail-value-family: var(--font-data-family);
+  --font-product-detail-value-size: 0.900rem;
+  --font-product-detail-value-weight: 400;
+  --font-product-detail-value-line-height: 1.25rem;
+
+  /* This changes review dates in the product reviews list. */
+  --font-review-date-family: var(--font-data-family);
+  --font-review-date-size: 0.875rem;
+  --font-review-date-weight: 400;
+  --font-review-date-line-height: 1.25rem;
+
+  /* This changes the customer name on the profile page. */
+  --font-profile-name-family: var(--font-display-family);
+  --font-profile-name-size: 1.5rem;
+  --font-profile-name-weight: 700;
+  --font-profile-name-line-height: 2rem;
+
+  /* This changes small profile labels like "Email", "Tax ID", and "Address". */
+  --font-profile-label-family: var(--font-data-family);
+  --font-profile-label-size: 0.875rem;
+  --font-profile-label-weight: 500;
+  --font-profile-label-line-height: 1.25rem;
+
+  /* This changes notification date and time text. */
+  --font-notification-timestamp-family: var(--font-data-family);
+  --font-notification-timestamp-size: 0.875rem;
+  --font-notification-timestamp-weight: 400;
+  --font-notification-timestamp-line-height: 1.25rem;
+
+  /* This changes the small top label in the footer section, like "STAY CONNECTED". */
+  --font-footer-kicker-family: var(--font-data-family);
+  --font-footer-kicker-size: 0.75rem;
+  --font-footer-kicker-weight: 600;
+  --font-footer-kicker-line-height: 1rem;
+
+  /* This changes small footer card labels like "HELP DESK" and "BUSINESS". */
+  --font-footer-overline-family: var(--font-data-family);
+  --font-footer-overline-size: 0.75rem;
+  --font-footer-overline-weight: 400;
+  --font-footer-overline-line-height: 1rem;
+
+  /* This changes the big main footer heading. */
+  --font-footer-title-family: var(--font-display-family);
+  --font-footer-title-size: 1.875rem;
+  --font-footer-title-size-md: 3rem;
+  --font-footer-title-weight: 700;
+  --font-footer-title-line-height: 1.25;
+
+  /* This changes footer card titles like "Contact support". */
+  --font-footer-card-title-family: var(--font-display-family);
+  --font-footer-card-title-size: 1.125rem;
+  --font-footer-card-title-weight: 600;
+  --font-footer-card-title-line-height: 1.75rem;
+}
+
+.font-brand {
+  font-family: var(--font-brand-family);
+  font-size: var(--font-brand-size);
+  font-weight: var(--font-brand-weight);
+  line-height: var(--font-brand-line-height);
+}
+
+.font-page-title {
+  font-family: var(--font-page-title-family);
+  font-size: var(--font-page-title-size);
+  font-weight: var(--font-page-title-weight);
+  line-height: var(--font-page-title-line-height);
+}
+
+.font-catalog-section-title {
+  font-family: var(--font-catalog-section-title-family);
+  font-size: var(--font-catalog-section-title-size);
+  font-weight: var(--font-catalog-section-title-weight);
+  line-height: var(--font-catalog-section-title-line-height);
+}
+
+.font-detail-section-title {
+  font-family: var(--font-detail-section-title-family);
+  font-size: var(--font-detail-section-title-size);
+  font-weight: var(--font-detail-section-title-weight);
+  line-height: var(--font-detail-section-title-line-height);
+}
+
+.font-hero-eyebrow {
+  font-family: var(--font-hero-eyebrow-family);
+  font-size: var(--font-hero-eyebrow-size);
+  font-weight: var(--font-hero-eyebrow-weight);
+  line-height: var(--font-hero-eyebrow-line-height);
+}
+
+.font-hero-title {
+  font-family: var(--font-hero-title-family);
+  font-size: var(--font-hero-title-size);
+  font-weight: var(--font-hero-title-weight);
+  line-height: var(--font-hero-title-line-height);
+}
+
+.font-hero-panel-label {
+  font-family: var(--font-hero-panel-label-family);
+  font-size: var(--font-hero-panel-label-size);
+  font-weight: var(--font-hero-panel-label-weight);
+  line-height: var(--font-hero-panel-label-line-height);
+}
+
+.font-product-card-title {
+  font-family: var(--font-product-card-title-family);
+  font-size: var(--font-product-card-title-size);
+  font-weight: var(--font-product-card-title-weight);
+  line-height: var(--font-product-card-title-line-height);
+}
+
+.font-product-meta {
+  font-family: var(--font-product-meta-family);
+  font-size: var(--font-product-meta-size);
+  font-weight: var(--font-product-meta-weight);
+  line-height: var(--font-product-meta-line-height);
+}
+
+.font-product-grid-price {
+  font-family: var(--font-product-grid-price-family);
+  font-size: var(--font-product-grid-price-size);
+  font-weight: var(--font-product-grid-price-weight);
+  line-height: var(--font-product-grid-price-line-height);
+}
+
+.font-product-detail-title {
+  font-family: var(--font-product-detail-title-family);
+  font-size: var(--font-product-detail-title-size);
+  font-weight: var(--font-product-detail-title-weight);
+  line-height: var(--font-product-detail-title-line-height);
+}
+
+.font-product-detail-price {
+  font-family: var(--font-product-detail-price-family);
+  font-size: var(--font-product-detail-price-size);
+  font-weight: var(--font-product-detail-price-weight);
+  line-height: var(--font-product-detail-price-line-height);
+}
+
+.font-product-detail-label {
+  font-family: var(--font-product-detail-label-family);
+  font-size: var(--font-product-detail-label-size);
+  font-weight: var(--font-product-detail-label-weight);
+  line-height: var(--font-product-detail-label-line-height);
+}
+
+.font-product-detail-value {
+  font-family: var(--font-product-detail-value-family);
+  font-size: var(--font-product-detail-value-size);
+  font-weight: var(--font-product-detail-value-weight);
+  line-height: var(--font-product-detail-value-line-height);
+}
+
+.font-review-date {
+  font-family: var(--font-review-date-family);
+  font-size: var(--font-review-date-size);
+  font-weight: var(--font-review-date-weight);
+  line-height: var(--font-review-date-line-height);
+}
+
+.font-profile-name {
+  font-family: var(--font-profile-name-family);
+  font-size: var(--font-profile-name-size);
+  font-weight: var(--font-profile-name-weight);
+  line-height: var(--font-profile-name-line-height);
+}
+
+.font-profile-label {
+  font-family: var(--font-profile-label-family);
+  font-size: var(--font-profile-label-size);
+  font-weight: var(--font-profile-label-weight);
+  line-height: var(--font-profile-label-line-height);
+}
+
+.font-notification-timestamp {
+  font-family: var(--font-notification-timestamp-family);
+  font-size: var(--font-notification-timestamp-size);
+  font-weight: var(--font-notification-timestamp-weight);
+  line-height: var(--font-notification-timestamp-line-height);
+}
+
+.font-footer-kicker {
+  font-family: var(--font-footer-kicker-family);
+  font-size: var(--font-footer-kicker-size);
+  font-weight: var(--font-footer-kicker-weight);
+  line-height: var(--font-footer-kicker-line-height);
+}
+
+.font-footer-overline {
+  font-family: var(--font-footer-overline-family);
+  font-size: var(--font-footer-overline-size);
+  font-weight: var(--font-footer-overline-weight);
+  line-height: var(--font-footer-overline-line-height);
+}
+
+.font-footer-title {
+  font-family: var(--font-footer-title-family);
+  font-size: var(--font-footer-title-size);
+  font-weight: var(--font-footer-title-weight);
+  line-height: var(--font-footer-title-line-height);
+}
+
+.font-footer-card-title {
+  font-family: var(--font-footer-card-title-family);
+  font-size: var(--font-footer-card-title-size);
+  font-weight: var(--font-footer-card-title-weight);
+  line-height: var(--font-footer-card-title-line-height);
+}
+
+.font-mono {
+  font-family: var(--font-mono-family);
+}
+
+.text-xs {
+  font-size: var(--font-utility-text-xs-size);
+  line-height: var(--font-utility-text-xs-line-height);
+}
+
+.text-sm {
+  font-size: var(--font-utility-text-sm-size);
+  line-height: var(--font-utility-text-sm-line-height);
+}
+
+.text-base {
+  font-size: var(--font-utility-text-base-size);
+  line-height: var(--font-utility-text-base-line-height);
+}
+
+.text-lg {
+  font-size: var(--font-utility-text-lg-size);
+  line-height: var(--font-utility-text-lg-line-height);
+}
+
+.text-xl {
+  font-size: var(--font-utility-text-xl-size);
+  line-height: var(--font-utility-text-xl-line-height);
+}
+
+.text-2xl {
+  font-size: var(--font-utility-text-2xl-size);
+  line-height: var(--font-utility-text-2xl-line-height);
+}
+
+.text-3xl {
+  font-size: var(--font-utility-text-3xl-size);
+  line-height: var(--font-utility-text-3xl-line-height);
+}
+
+.font-medium {
+  font-weight: var(--font-utility-font-medium-weight);
+}
+
+.font-semibold {
+  font-weight: var(--font-utility-font-semibold-weight);
+}
+
+.font-bold {
+  font-weight: var(--font-utility-font-bold-weight);
+}
+
+.leading-6 {
+  line-height: var(--font-utility-leading-6);
+}
+
+.leading-7 {
+  line-height: var(--font-utility-leading-7);
+}
+
+@media (min-width: 768px) {
+  .md\:text-base {
+    font-size: var(--font-utility-text-base-size);
+    line-height: var(--font-utility-text-base-line-height);
+  }
+
+  .md\:text-lg {
+    font-size: var(--font-utility-text-lg-size);
+    line-height: var(--font-utility-text-lg-line-height);
+  }
+
+  .font-hero-title {
+    font-size: var(--font-hero-title-size-md);
+  }
+
+  .font-footer-title {
+    font-size: var(--font-footer-title-size-md);
+  }
+}

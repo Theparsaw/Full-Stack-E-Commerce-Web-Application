@@ -6,6 +6,7 @@ import { authStore } from "./store/auth";
 import { notificationStore } from "./store/notificationStore";
 
 import "./style.css";
+import "./styles/fonts.css";
 
 if (
   authStore.isLoggedIn &&

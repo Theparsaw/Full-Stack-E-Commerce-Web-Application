@@ -143,11 +143,15 @@
 
 html {
   background: var(--theme-bg);
+  font-family: var(--font-ui-family);
 }
 
 body {
   background: var(--theme-bg);
   color: var(--theme-text);
+  font-family: var(--font-ui-family);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
   transition: background-color 180ms ease, color 180ms ease;
 }
 
