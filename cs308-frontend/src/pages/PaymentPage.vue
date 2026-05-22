@@ -161,10 +161,6 @@
           <span class="font-medium text-slate-700">Total Price</span>
           <span class="font-bold text-slate-900">${{ order.totalPrice.toLocaleString() }}</span>
         </div>
-
-        <p class="mt-4 text-xs text-slate-500">
-          Mock rule: cards ending with an even digit succeed, odd digit fail.
-        </p>
       </aside>
     </div>
   </div>

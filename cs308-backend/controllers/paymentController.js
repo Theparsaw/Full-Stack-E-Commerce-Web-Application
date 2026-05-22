@@ -56,6 +56,29 @@ const simulatePaymentResult = (cardNumber) => {
   return lastDigit % 2 === 0;
 };
 
+const serializeDelivery = (delivery) => {
+  if (!delivery) return null;
+
+  const deliveryObject = typeof delivery.toObject === "function"
+    ? delivery.toObject()
+    : delivery;
+
+  const serializedDelivery = {
+    _id: deliveryObject._id,
+    orderId: deliveryObject.orderId,
+    userId: deliveryObject.userId,
+    items: deliveryObject.items,
+    totalPrice: deliveryObject.totalPrice,
+    address: deliveryObject.address,
+    status: deliveryObject.status,
+  };
+
+  if (deliveryObject.createdAt) serializedDelivery.createdAt = deliveryObject.createdAt;
+  if (deliveryObject.updatedAt) serializedDelivery.updatedAt = deliveryObject.updatedAt;
+
+  return serializedDelivery;
+};
+
 const validateOrderStock = async (items) => {
   for (const item of items) {
     const product = await Product.findOne({ productId: item.productId });
@@ -308,7 +331,7 @@ const processPayment = async (req, res) => {
       success: true,
       message: "Payment completed successfully",
       paymentStatus: payment.status,
-      delivery,
+      delivery: serializeDelivery(delivery),
       order: serializeOrder(order),
     });
 

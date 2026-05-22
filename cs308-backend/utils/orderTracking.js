@@ -126,31 +126,32 @@ const mergeOrderItemsByProductId = (items = []) => {
   const itemsByProductId = new Map();
 
   for (const item of items) {
-    const productId = String(item.productId || "").trim();
+    const itemObject = typeof item.toObject === "function" ? item.toObject() : item;
+    const productId = String(itemObject.productId || "").trim();
     if (!productId) continue;
 
     const existingItem = itemsByProductId.get(productId);
-    const quantity = Number(item.quantity || 0);
-    const returnedQuantity = Number(item.returnedQuantity || 0);
+    const quantity = Number(itemObject.quantity || 0);
+    const returnedQuantity = Number(itemObject.returnedQuantity || 0);
 
     if (existingItem) {
       existingItem.quantity += quantity;
       existingItem.returnedQuantity = Number(existingItem.returnedQuantity || 0) + returnedQuantity;
-      if (existingItem.returnedQuantity > 0 || item.returnedQuantity !== undefined) {
+      if (existingItem.returnedQuantity > 0 || itemObject.returnedQuantity !== undefined) {
         existingItem.status = existingItem.returnedQuantity >= existingItem.quantity ? "returned" : "active";
       }
       continue;
     }
 
     const mergedItem = {
-      ...item,
+      ...itemObject,
       productId,
       quantity,
     };
 
-    if (item.returnedQuantity !== undefined) {
+    if (itemObject.returnedQuantity !== undefined) {
       mergedItem.returnedQuantity = returnedQuantity;
-      mergedItem.status = returnedQuantity >= quantity ? "returned" : item.status;
+      mergedItem.status = returnedQuantity >= quantity ? "returned" : itemObject.status;
     }
 
     itemsByProductId.set(productId, mergedItem);
@@ -159,17 +160,21 @@ const mergeOrderItemsByProductId = (items = []) => {
   return Array.from(itemsByProductId.values());
 };
 
-const serializeOrder = (order) => ({
-  id: order._id,
-  userId: order.userId,
-  cartId: order.cartId,
-  items: mergeOrderItemsByProductId(order.items),
-  totalPrice: order.totalPrice,
-  status: order.status,
-  paidAt: order.paidAt,
-  createdAt: order.createdAt,
-  updatedAt: order.updatedAt,
-});
+const serializeOrder = (order) => {
+  const orderObject = typeof order.toObject === "function" ? order.toObject() : order;
+
+  return {
+    id: orderObject._id,
+    userId: orderObject.userId,
+    cartId: orderObject.cartId,
+    items: mergeOrderItemsByProductId(orderObject.items),
+    totalPrice: orderObject.totalPrice,
+    status: orderObject.status,
+    paidAt: orderObject.paidAt,
+    createdAt: orderObject.createdAt,
+    updatedAt: orderObject.updatedAt,
+  };
+};
 
 const serializeTrackedOrder = (order, delivery = null) => {
   const baseOrder = serializeOrder(order);
