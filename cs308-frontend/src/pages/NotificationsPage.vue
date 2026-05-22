@@ -1,6 +1,6 @@
 <template>
   <div class="max-w-4xl mx-auto p-6">
-    <h1 class="font-page-title mb-6">
+    <h1 class="text-3xl font-bold mb-6">
       Notifications
     </h1>
 
@@ -46,7 +46,7 @@
               {{ notification.message }}
             </p>
 
-            <p class="font-notification-timestamp text-gray-400 mt-2">
+            <p class="text-sm text-gray-400 mt-2">
               {{ formatNotificationTimestamp(notification.createdAt) }}
             </p>
           </div>

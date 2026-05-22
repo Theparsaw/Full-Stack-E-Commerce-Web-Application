@@ -35,8 +35,8 @@
         <div class="w-full md:w-1/2 flex flex-col">
           <div class="mb-3 flex items-start justify-between gap-4">
             <div>
-              <h1 class="font-product-detail-title mb-2 text-gray-900">{{ product.model }}</h1>
-              <p class="font-product-meta mb-3 text-gray-500">
+              <h1 class="text-3xl font-bold mb-2 text-gray-900">{{ product.model }}</h1>
+              <p class="mb-3 text-sm font-medium text-gray-500">
                 Product ID: {{ displayProductId }}
               </p>
               <div v-if="product.hasDiscount">
@@ -45,7 +45,7 @@
                 </p>
 
                 <div class="flex items-center gap-2">
-                  <p class="font-product-detail-price text-red-600">
+                  <p class="text-3xl font-bold text-red-600">
                     ${{ Number(product.discountedPrice).toLocaleString() }}
                   </p>
 
@@ -62,7 +62,7 @@
               </div>
 
               <div v-else>
-                <p class="font-product-detail-price text-green-600">
+                <p class="text-3xl font-bold text-green-600">
                   ${{ Number(product.price).toLocaleString() }}
                 </p>
               </div>
@@ -82,11 +82,11 @@
           <p class="text-gray-700 mb-6">{{ product.description }}</p>
 
           <div class="grid grid-cols-2 gap-4 mb-8 text-sm">
-            <div><strong class="font-product-detail-label text-gray-900">Product ID:</strong> <span class="font-product-detail-value text-gray-600">{{ displayProductId }}</span></div>
-            <div><strong class="font-product-detail-label text-gray-900">Brand:</strong> <span class="font-product-detail-value text-gray-600">{{ product.name }}</span></div>
-            <div><strong class="font-product-detail-label text-gray-900">Category:</strong> <span class="font-product-detail-value text-gray-600">{{ product.categoryId }}</span></div>
-            <div><strong class="font-product-detail-label text-gray-900">Stock:</strong> <span class="font-product-detail-value text-gray-600">{{ product.quantityInStock }}</span></div>
-            <div><strong class="font-product-detail-label text-gray-900">Warranty:</strong> <span class="font-product-detail-value text-gray-600">{{ product.warrantyStatus }}</span></div>
+            <div><strong class="text-gray-900">Product ID:</strong> <span class="text-gray-600">{{ displayProductId }}</span></div>
+            <div><strong class="text-gray-900">Brand:</strong> <span class="text-gray-600">{{ product.name }}</span></div>
+            <div><strong class="text-gray-900">Category:</strong> <span class="text-gray-600">{{ product.categoryId }}</span></div>
+            <div><strong class="text-gray-900">Stock:</strong> <span class="text-gray-600">{{ product.quantityInStock }}</span></div>
+            <div><strong class="text-gray-900">Warranty:</strong> <span class="text-gray-600">{{ product.warrantyStatus }}</span></div>
           </div>
 
           <div class="mt-auto pt-6 border-t flex flex-col gap-4">
@@ -118,7 +118,7 @@
       <section ref="reviewSection" class="bg-white border rounded-xl p-8 shadow-sm">
         <div class="flex items-start justify-between gap-4 mb-6">
           <div>
-            <h2 class="font-detail-section-title text-gray-900">Customer Reviews</h2>
+            <h2 class="text-2xl font-semibold text-gray-900">Customer Reviews</h2>
             <p class="text-sm text-gray-500 mt-1">Only approved reviews are shown publicly.</p>
           </div>
           <span class="text-sm font-medium text-gray-500">{{ reviews.length }} review<span v-if="reviews.length !== 1">s</span></span>
@@ -140,7 +140,7 @@
             <div class="flex items-center justify-between gap-4">
               <div>
                 <h3 class="font-semibold text-gray-900">{{ review.reviewerName }}</h3>
-                <p class="font-review-date text-gray-500">{{ formatReviewDate(review.createdAt) }}</p>
+                <p class="text-sm text-gray-500">{{ formatReviewDate(review.createdAt) }}</p>
               </div>
               <div class="flex items-center gap-3">
                 <button
@@ -170,7 +170,7 @@
       <section v-if="canShowReviewForm" class="bg-white border rounded-xl p-8 shadow-sm">
         <div class="flex items-start justify-between gap-4 mb-6">
           <div>
-            <h2 class="font-detail-section-title text-gray-900">{{ reviewFormTitle }}</h2>
+            <h2 class="text-2xl font-semibold text-gray-900">{{ reviewFormTitle }}</h2>
             <p class="text-sm text-gray-500 mt-1" v-if="authStore.isLoggedIn">
               <span v-if="isEditingReview">Rating-only edits go live immediately. Comment edits require product manager approval.</span>
               <span v-else-if="canAddCommentToOwnRating">Your rating is already public. Add a comment and it will appear after product manager approval.</span>
@@ -265,7 +265,7 @@
       </section>
 
       <section v-else class="bg-white border rounded-xl p-8 shadow-sm">
-        <h2 class="font-detail-section-title text-gray-900">Your Review</h2>
+        <h2 class="text-2xl font-semibold text-gray-900">Your Review</h2>
         <p class="mt-2 text-sm text-gray-500">
           You have already reviewed this product. Use the Edit button on your review above to update it.
         </p>

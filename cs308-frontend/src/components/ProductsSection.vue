@@ -1,7 +1,7 @@
 <template>
   <section class="mb-10" v-if="products && products.length">
     <div class="flex items-center justify-between mb-4">
-      <h2 class="font-catalog-section-title text-gray-900">{{ title }}</h2>
+      <h2 class="text-2xl font-bold text-gray-900">{{ title }}</h2>
       <span class="text-sm text-gray-500">{{ products.length }} products</span>
     </div>
 
@@ -53,11 +53,11 @@
             {{ getCategoryLabel(product.categoryId) }}
           </p>
 
-          <p class="font-product-meta text-gray-500 mb-1">
+          <p class="text-xs font-medium text-gray-500 mb-1">
             Product ID: {{ product.productId }}
           </p>
 
-          <h3 class="font-product-card-title text-gray-900 line-clamp-2 min-h-[48px]">
+          <h3 class="font-semibold text-gray-900 line-clamp-2 min-h-[48px]">
             {{ product.model }}
           </h3>
 
@@ -79,7 +79,7 @@
               </p>
 
               <div class="flex items-center gap-2">
-                <p class="font-product-grid-price text-red-600">
+                <p class="text-lg font-bold text-red-600">
                   ${{ Number(product.discountedPrice).toLocaleString() }}
                 </p>
 
@@ -92,7 +92,7 @@
             </div>
 
             <div v-else>
-              <p class="font-product-grid-price text-orange-600">
+              <p class="text-lg font-bold text-orange-600">
                 ${{ Number(product.price).toLocaleString() }}
               </p>
             </div>

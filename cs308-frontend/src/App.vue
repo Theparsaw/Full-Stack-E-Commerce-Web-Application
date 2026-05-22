@@ -55,7 +55,7 @@
           </div>
         </div>
 
-        <router-link to="/" class="font-brand text-orange-600 shrink-0">
+        <router-link to="/" class="text-2xl font-bold text-orange-600 shrink-0">
           CS308 Store
         </router-link>
 

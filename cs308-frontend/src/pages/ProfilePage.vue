@@ -3,7 +3,7 @@
     <div class="mx-auto max-w-5xl px-4">
       <div class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 class="font-page-title text-gray-800">My Profile</h1>
+          <h1 class="text-3xl font-bold text-gray-800">My Profile</h1>
           <p class="mt-2 text-sm text-gray-500">
             Manage your account details and track current deliveries.
           </p>
@@ -62,7 +62,7 @@
             </div>
 
             <div>
-              <h2 class="font-profile-name text-gray-800">{{ user.name }}</h2>
+              <h2 class="text-2xl font-bold text-gray-800">{{ user.name }}</h2>
               <span
                 class="mt-1 inline-block rounded-full px-3 py-1 text-sm font-medium"
                 :class="{
@@ -91,22 +91,22 @@
 
           <div v-if="!isEditing" class="space-y-5">
             <div class="flex flex-col gap-1">
-              <span class="font-profile-label uppercase tracking-wide text-gray-400">Email</span>
+              <span class="text-sm font-medium uppercase tracking-wide text-gray-400">Email</span>
               <span class="font-medium text-gray-800">{{ user.email }}</span>
             </div>
 
             <div class="flex flex-col gap-1">
-              <span class="font-profile-label uppercase tracking-wide text-gray-400">Tax ID</span>
+              <span class="text-sm font-medium uppercase tracking-wide text-gray-400">Tax ID</span>
               <span class="font-medium text-gray-800">{{ user.taxId || 'Not provided' }}</span>
             </div>
 
             <div class="flex flex-col gap-1">
-              <span class="font-profile-label uppercase tracking-wide text-gray-400">Address</span>
+              <span class="text-sm font-medium uppercase tracking-wide text-gray-400">Address</span>
               <span class="font-medium text-gray-800">{{ user.address || 'Not provided' }}</span>
             </div>
 
             <div class="flex flex-col gap-1">
-              <span class="font-profile-label uppercase tracking-wide text-gray-400">Member Since</span>
+              <span class="text-sm font-medium uppercase tracking-wide text-gray-400">Member Since</span>
               <span class="font-medium text-gray-800">{{ formatDate(user.createdAt) }}</span>
             </div>
           </div>
@@ -121,7 +121,7 @@
             />
 
             <div class="flex flex-col gap-3">
-              <span class="font-profile-label uppercase tracking-wide text-gray-400">Profile Photo</span>
+              <span class="text-sm font-medium uppercase tracking-wide text-gray-400">Profile Photo</span>
               <div class="flex flex-wrap items-center gap-4">
                 <img
                   v-if="displayProfileImage"
@@ -159,7 +159,7 @@
             </div>
 
             <div class="flex flex-col gap-2">
-              <label class="font-profile-label uppercase tracking-wide text-gray-400" for="name">
+              <label class="text-sm font-medium uppercase tracking-wide text-gray-400" for="name">
                 Name
               </label>
               <input
@@ -179,7 +179,7 @@
             </div>
 
             <div class="flex flex-col gap-2">
-              <label class="font-profile-label uppercase tracking-wide text-gray-400" for="email">
+              <label class="text-sm font-medium uppercase tracking-wide text-gray-400" for="email">
                 Email
               </label>
               <input
@@ -192,7 +192,7 @@
             </div>
 
             <div class="flex flex-col gap-2">
-              <label class="font-profile-label uppercase tracking-wide text-gray-400" for="taxId">
+              <label class="text-sm font-medium uppercase tracking-wide text-gray-400" for="taxId">
                 Tax ID
               </label>
               <input
@@ -212,7 +212,7 @@
             </div>
 
             <div class="flex flex-col gap-2">
-              <label class="font-profile-label uppercase tracking-wide text-gray-400" for="address">
+              <label class="text-sm font-medium uppercase tracking-wide text-gray-400" for="address">
                 Address
               </label>
               <textarea
