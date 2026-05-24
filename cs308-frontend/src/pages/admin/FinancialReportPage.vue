@@ -9,7 +9,7 @@
     </div>
 
     <section class="no-print mb-6 rounded-3xl border border-gray-200 bg-white p-5">
-      <div class="grid gap-4 md:grid-cols-[1fr_1fr_auto_auto]">
+      <div class="grid gap-4 md:items-end md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto_auto_auto]">
         <div>
           <label class="block text-sm font-medium text-slate-700 mb-1">
             Start Date
@@ -33,16 +33,58 @@
         </div>
 
         <button
+          type="button"
+          @click="toggleChartSortOrder"
+          class="self-end inline-flex items-center justify-center gap-1.5 rounded-2xl border border-gray-300 bg-white px-2.5 py-3 text-sm font-semibold text-gray-700 transition hover:border-orange-300 hover:text-orange-600"
+          :aria-label="`Sort daily totals by time: ${chartSortOrderLabel}`"
+          :title="`Sort daily totals by time: ${chartSortOrderLabel}`"
+        >
+          <span class="flex items-center gap-1" aria-hidden="true">
+            <svg
+              viewBox="0 0 20 20"
+              fill="none"
+              class="h-4 w-4 transition"
+              :class="chartSortOrder === 'asc' ? 'text-orange-500' : 'text-gray-400'"
+            >
+              <path
+                d="M10 15V5m0 0-4 4m4-4 4 4"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="1.8"
+              />
+            </svg>
+            <svg
+              viewBox="0 0 20 20"
+              fill="none"
+              class="h-4 w-4 transition"
+              :class="chartSortOrder === 'desc' ? 'text-orange-500' : 'text-gray-400'"
+            >
+              <path
+                d="M10 5v10m0 0-4-4m4 4 4-4"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="1.8"
+              />
+            </svg>
+          </span>
+          <span class="hidden sm:inline">{{ chartSortOrderLabel }}</span>
+        </button>
+
+        <button
+          type="button"
           @click="loadReport"
           :disabled="loading"
-          class="self-end rounded-2xl bg-slate-900 px-5 py-3 font-semibold text-white transition hover:bg-slate-800 disabled:opacity-50"
+          class="self-end rounded-2xl bg-slate-900 px-3 py-3 font-semibold text-white transition hover:bg-slate-800 disabled:opacity-50"
         >
           {{ loading ? 'Loading...' : 'Apply' }}
         </button>
 
         <button
+          type="button"
           @click="printReport"
-          class="self-end rounded-2xl bg-gray-100 px-5 py-3 font-semibold text-gray-700 transition hover:bg-gray-200"
+          class="self-end rounded-2xl bg-gray-100 px-3 py-3 font-semibold text-gray-700 transition hover:bg-gray-200"
         >
           Print
         </button>
@@ -127,7 +169,7 @@
 
       <div v-else class="space-y-5">
         <div
-          v-for="point in report.chart"
+          v-for="point in sortedChart"
           :key="point.date"
           class="rounded-2xl border border-gray-100 p-4"
         >
@@ -213,11 +255,32 @@ const report = ref({
 })
 const loading = ref(false)
 const error = ref('')
+const chartSortOrder = ref('asc')
 
 const requestParams = computed(() => ({
   startDate: filters.value.startDate,
   endDate: filters.value.endDate,
 }))
+
+const chartSortOrderLabel = computed(() =>
+  chartSortOrder.value === 'asc' ? 'Oldest first' : 'Newest first'
+)
+
+const sortedChart = computed(() => {
+  return [...report.value.chart].sort((left, right) => {
+    const leftTime = new Date(left.date).getTime()
+    const rightTime = new Date(right.date).getTime()
+    const fallbackCompare = String(left.date || '').localeCompare(String(right.date || ''))
+
+    if (Number.isNaN(leftTime) || Number.isNaN(rightTime)) {
+      return chartSortOrder.value === 'asc' ? fallbackCompare : -fallbackCompare
+    }
+
+    return chartSortOrder.value === 'asc'
+      ? leftTime - rightTime
+      : rightTime - leftTime
+  })
+})
 
 const maxChartValue = computed(() => {
   const values = report.value.chart.flatMap((point) => [
@@ -263,6 +326,10 @@ const formatCurrency = (value) => {
 const getChartWidth = (value) => {
   const width = Math.round((Number(value || 0) / maxChartValue.value) * 100)
   return `${Math.max(width, Number(value || 0) > 0 ? 4 : 0)}%`
+}
+
+const toggleChartSortOrder = () => {
+  chartSortOrder.value = chartSortOrder.value === 'asc' ? 'desc' : 'asc'
 }
 
 const printReport = () => {
