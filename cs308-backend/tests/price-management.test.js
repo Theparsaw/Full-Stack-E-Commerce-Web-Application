@@ -53,7 +53,7 @@ describe("Price Management API (Sales Manager)", () => {
 
   test("PUT /api/products/:id returns 404 for non-existent product", async () => {
     const res = await request(app)
-      .put("/api/products/nonexistent-product-id")
+      .put("/api/products/nonexistent-product-id/price")
       .set("Authorization", `Bearer ${salesManagerToken}`)
       .send({ price: 50.00 });
 
@@ -66,7 +66,7 @@ describe("Price Management API (Sales Manager)", () => {
     const originalPrice = before.body.price;
 
     const res = await request(app)
-      .put("/api/products/p001")
+      .put("/api/products/p001/price")
       .set("Authorization", `Bearer ${salesManagerToken}`)
       .send({ price: 1234.56 });
 
@@ -75,7 +75,7 @@ describe("Price Management API (Sales Manager)", () => {
 
     // Restore original price
     await request(app)
-      .put("/api/products/p001")
+      .put("/api/products/p001/price")
       .set("Authorization", `Bearer ${salesManagerToken}`)
       .send({ price: originalPrice });
   });
@@ -85,7 +85,7 @@ describe("Price Management API (Sales Manager)", () => {
     const originalPrice = before.body.price;
 
     await request(app)
-      .put("/api/products/p002")
+      .put("/api/products/p002/price")
       .set("Authorization", `Bearer ${salesManagerToken}`)
       .send({ price: 777.77 });
 
@@ -94,7 +94,7 @@ describe("Price Management API (Sales Manager)", () => {
 
     // Restore original price
     await request(app)
-      .put("/api/products/p002")
+      .put("/api/products/p002/price")
       .set("Authorization", `Bearer ${salesManagerToken}`)
       .send({ price: originalPrice });
   });
@@ -104,7 +104,7 @@ describe("Price Management API (Sales Manager)", () => {
     const originalPrice = before.body.price;
 
     const res = await request(app)
-      .put("/api/products/p003")
+      .put("/api/products/p003/price")
       .set("Authorization", `Bearer ${salesManagerToken}`)
       .send({ price: 0 });
 
@@ -113,7 +113,7 @@ describe("Price Management API (Sales Manager)", () => {
 
     // Restore
     await request(app)
-      .put("/api/products/p003")
+      .put("/api/products/p003/price")
       .set("Authorization", `Bearer ${salesManagerToken}`)
       .send({ price: originalPrice });
   });

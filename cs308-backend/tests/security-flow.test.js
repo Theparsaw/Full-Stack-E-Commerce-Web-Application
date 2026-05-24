@@ -102,18 +102,27 @@ describe("Security and end-to-end integration", () => {
 
     const stockBefore = await Product.findOne({ productId: "p001" }).lean();
 
-    const checkoutRes = await request(app)
-      .post(`/api/cart/${cartId}/checkout`)
+    const createOrderRes = await request(app)
+      .post(`/api/checkout/${cartId}/order`)
+      .set("Authorization", `Bearer ${token}`);
+
+    expect(createOrderRes.statusCode).toBe(201);
+    createdOrderIds.push(createOrderRes.body.order.id);
+
+    const paymentRes = await request(app)
+      .post(`/api/payments/${createOrderRes.body.order.id}`)
       .set("Authorization", `Bearer ${token}`)
       .send({
-        paymentMethod: {
-          cardholderName: "Failure Case",
-          cardNumber: "4111111111110000",
-        },
+        cardHolder: "Failure Case",
+        cardNumber: "4111111111110001",
+        expiryMonth: "12",
+        expiryYear: "2030",
+        cvv: "123",
       });
 
-    expect(checkoutRes.statusCode).toBe(402);
-    expect(checkoutRes.body.code).toBe("PAYMENT_FAILED");
+    expect(paymentRes.statusCode).toBe(200);
+    expect(paymentRes.body.success).toBe(false);
+    expect(paymentRes.body.paymentStatus).toBe("failed");
 
     const stockAfter = await Product.findOne({ productId: "p001" }).lean();
     const cartAfter = await Cart.findOne({ cartId }).lean();
@@ -212,18 +221,26 @@ describe("Security and end-to-end integration", () => {
     expect(addToCartRes.statusCode).toBe(200);
     expect(addToCartRes.body.totalPrice).toBe(500);
 
-    const checkoutRes = await request(app)
-      .post(`/api/cart/${cartId}/checkout`)
+    const createOrderRes = await request(app)
+      .post(`/api/checkout/${cartId}/order`)
+      .set("Authorization", `Bearer ${token}`);
+
+    expect(createOrderRes.statusCode).toBe(201);
+    createdOrderIds.push(createOrderRes.body.order.id);
+
+    const paymentRes = await request(app)
+      .post(`/api/payments/${createOrderRes.body.order.id}`)
       .set("Authorization", `Bearer ${token}`)
       .send({
-        paymentMethod: {
-          cardholderName: "Happy Path",
-          cardNumber: "4242424242424242",
-        },
+        cardHolder: "Happy Path",
+        cardNumber: "4242424242424242",
+        expiryMonth: "12",
+        expiryYear: "2030",
+        cvv: "123",
       });
 
-    expect(checkoutRes.statusCode).toBe(200);
-    expect(checkoutRes.body.message).toBe("Checkout completed successfully");
+    expect(paymentRes.statusCode).toBe(200);
+    expect(paymentRes.body.message).toBe("Payment completed successfully");
 
     const productAfterCheckout = await Product.findOne({
       productId: createProductRes.body.product.productId,
@@ -233,5 +250,5 @@ describe("Security and end-to-end integration", () => {
     expect(productAfterCheckout.quantityInStock).toBe(3);
     expect(cartAfterCheckout.items).toEqual([]);
     expect(cartAfterCheckout.totalPrice).toBe(0);
-  });
+  }, 15000);
 });

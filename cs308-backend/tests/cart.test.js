@@ -3,9 +3,12 @@ const mongoose = require("mongoose");
 const app = require("../server");
 const Cart = require("../models/Cart");
 const User = require("../models/User");
+const Product = require("../models/Product");
 
 const createCartId = (suffix) => `test-cart-${suffix}-${Date.now()}`;
 const createEmail = (label) => `cart-${label}-${Date.now()}@example.com`;
+const mergeProductId = `cart-merge-product-${Date.now()}`;
+const secondaryProductId = `cart-secondary-product-${Date.now()}`;
 const createdUserIds = [];
 
 const registerCustomer = async (label) => {
@@ -19,8 +22,37 @@ const registerCustomer = async (label) => {
   return res.body.token;
 };
 
+beforeAll(async () => {
+  await Product.create({
+    productId: mergeProductId,
+    categoryId: "cart-test",
+    name: "Cart Test Product",
+    model: "Merge Product",
+    serialNumber: `${mergeProductId}-serial`,
+    description: "Product used for cart merge tests",
+    quantityInStock: 10,
+    price: 100,
+    warrantyStatus: "Test warranty",
+    distributorInfo: "Test distributor",
+  });
+
+  await Product.create({
+    productId: secondaryProductId,
+    categoryId: "cart-test",
+    name: "Cart Test Product",
+    model: "Secondary Product",
+    serialNumber: `${secondaryProductId}-serial`,
+    description: "Secondary product used for cart total tests",
+    quantityInStock: 10,
+    price: 50,
+    warrantyStatus: "Test warranty",
+    distributorInfo: "Test distributor",
+  });
+});
+
 afterAll(async () => {
   await Cart.deleteMany({ cartId: { $regex: "^test-cart-" } });
+  await Product.deleteMany({ productId: { $in: [mergeProductId, secondaryProductId] } });
   if (createdUserIds.length > 0) {
     await User.deleteMany({ _id: { $in: createdUserIds } });
   }
@@ -102,18 +134,18 @@ describe("Cart API Endpoints", () => {
     await request(app)
       .post(`/api/cart/${cartId}/items`)
       .set("Authorization", `Bearer ${token}`)
-      .send({ productId: "p001", quantity: 2 });
+      .send({ productId: mergeProductId, quantity: 2 });
 
     const res = await request(app)
       .post(`/api/cart/${cartId}/items`)
       .set("Authorization", `Bearer ${token}`)
-      .send({ productId: "p001", quantity: 3 });
+      .send({ productId: mergeProductId, quantity: 3 });
 
     expect(res.statusCode).toBe(200);
     expect(res.body.items).toHaveLength(1);
     expect(res.body.items[0].quantity).toBe(5);
     expect(res.body.totalItems).toBe(5);
-    expect(res.body.totalPrice).toBe(6495);
+    expect(res.body.totalPrice).toBe(500);
   });
 
   test("PATCH /api/cart/:cartId/items/:productId updates quantity", async () => {
@@ -123,22 +155,22 @@ describe("Cart API Endpoints", () => {
     await request(app)
       .post(`/api/cart/${cartId}/items`)
       .set("Authorization", `Bearer ${token}`)
-      .send({ productId: "p001", quantity: 2 });
+      .send({ productId: mergeProductId, quantity: 2 });
 
     await request(app)
       .post(`/api/cart/${cartId}/items`)
       .set("Authorization", `Bearer ${token}`)
-      .send({ productId: "p002", quantity: 1 });
+      .send({ productId: secondaryProductId, quantity: 1 });
 
     const res = await request(app)
-      .patch(`/api/cart/${cartId}/items/p001`)
+      .patch(`/api/cart/${cartId}/items/${mergeProductId}`)
       .set("Authorization", `Bearer ${token}`)
       .send({ quantity: 4 });
 
     expect(res.statusCode).toBe(200);
     expect(res.body.totalItems).toBe(5);
-    expect(res.body.totalPrice).toBe(6395);
-    expect(res.body.items.find((item) => item.productId === "p001").quantity).toBe(
+    expect(res.body.totalPrice).toBe(450);
+    expect(res.body.items.find((item) => item.productId === mergeProductId).quantity).toBe(
       4
     );
   });
@@ -171,13 +203,16 @@ describe("Cart API Endpoints", () => {
   test("POST /api/cart/:cartId/items rejects quantities above available stock", async () => {
     const cartId = createCartId("stock-limit");
     const token = await registerCustomer("stock-limit");
+    const product = await Product.findOne({ productId: "p001" }).lean();
+    const requestedQuantity = product.quantityInStock + 1;
+
     const res = await request(app)
       .post(`/api/cart/${cartId}/items`)
       .set("Authorization", `Bearer ${token}`)
-      .send({ productId: "p001", quantity: 13 });
+      .send({ productId: "p001", quantity: requestedQuantity });
 
     expect(res.statusCode).toBe(400);
     expect(res.body.message).toBe("Requested quantity exceeds available stock");
-    expect(res.body.details.availableStock).toBe(12);
+    expect(res.body.details.availableStock).toBe(product.quantityInStock);
   });
 });

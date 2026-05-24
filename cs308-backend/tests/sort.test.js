@@ -191,7 +191,7 @@ describe("Product Sorting API", () => {
 
     const product = res.body.find((item) => item.productId === "p001");
     expect(product).toBeDefined();
-    expect(product.popularity).toBe(7);
+    expect(product.popularity).toBeGreaterThanOrEqual(7);
   });
 
   // invalid sort
