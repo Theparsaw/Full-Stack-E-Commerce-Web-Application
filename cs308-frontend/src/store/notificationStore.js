@@ -3,6 +3,7 @@ import {
   getNotifications,
   markNotificationAsRead,
 } from "../api/notificationApi";
+import { API_BASE_URL } from "../api/config";
 import { authStore } from "./auth";
 
 const AUTO_REFRESH_INTERVAL_MS = 30000;
@@ -11,11 +12,43 @@ let activeNotificationsRequest = null;
 let refreshIntervalId = null;
 let visibilityChangeHandler = null;
 let pendingSilentRefresh = false;
+let eventSource = null;
+let eventSourceToken = null;
 
 const applyNotifications = (notifications = []) => {
   notificationStore.notifications = notifications;
   notificationStore.unreadCount = notifications.filter(
     (notification) => !notification.isRead
+  ).length;
+};
+
+const sortNotifications = () => {
+  notificationStore.notifications.sort(
+    (a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)
+  );
+};
+
+const upsertNotification = (notification) => {
+  if (!notification?._id) {
+    return;
+  }
+
+  const existingIndex = notificationStore.notifications.findIndex(
+    (item) => item._id === notification._id
+  );
+
+  if (existingIndex === -1) {
+    notificationStore.notifications.unshift(notification);
+  } else {
+    notificationStore.notifications.splice(existingIndex, 1, {
+      ...notificationStore.notifications[existingIndex],
+      ...notification,
+    });
+  }
+
+  sortNotifications();
+  notificationStore.unreadCount = notificationStore.notifications.filter(
+    (item) => !item.isRead
   ).length;
 };
 
@@ -43,6 +76,7 @@ export const notificationStore = reactive({
 
   clear() {
     this.stopAutoRefresh();
+    this.stopRealtimeUpdates();
     pendingSilentRefresh = false;
     applyNotifications([]);
     this.loading = false;
@@ -140,6 +174,7 @@ export const notificationStore = reactive({
 
   startAutoRefresh(intervalMs = AUTO_REFRESH_INTERVAL_MS) {
     this.stopAutoRefresh();
+    this.startRealtimeUpdates();
 
     if (typeof window === "undefined") {
       return;
@@ -184,6 +219,50 @@ export const notificationStore = reactive({
     }
 
     visibilityChangeHandler = null;
+  },
+
+  startRealtimeUpdates() {
+    if (
+      typeof window === "undefined" ||
+      typeof EventSource === "undefined" ||
+      !isCustomerSessionActive()
+    ) {
+      return;
+    }
+
+    if (eventSource && eventSourceToken === authStore.token) {
+      return;
+    }
+
+    this.stopRealtimeUpdates();
+
+    const token = authStore.token;
+    const streamUrl =
+      `${API_BASE_URL}/notifications/stream?token=${encodeURIComponent(token)}`;
+
+    eventSource = new EventSource(streamUrl);
+    eventSourceToken = token;
+
+    eventSource.addEventListener("notification", (event) => {
+      try {
+        upsertNotification(JSON.parse(event.data));
+      } catch (error) {
+        this.requestRefresh().catch(() => {});
+      }
+    });
+
+    eventSource.onerror = () => {
+      this.requestRefresh().catch(() => {});
+    };
+  },
+
+  stopRealtimeUpdates() {
+    if (eventSource) {
+      eventSource.close();
+      eventSource = null;
+    }
+
+    eventSourceToken = null;
   },
 
   async markAsRead(notificationId) {

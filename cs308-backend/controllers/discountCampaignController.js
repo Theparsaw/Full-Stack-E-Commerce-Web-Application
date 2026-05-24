@@ -4,6 +4,7 @@ const asyncHandler = require("../utils/asyncHandler");
 const Wishlist = require("../models/Wishlist");
 const Notification = require("../models/Notification")
 const DiscountCampaign = require("../models/DiscountCampaign");
+const { publishNotification } = require("../utils/notificationEvents");
 
 
 
@@ -57,7 +58,7 @@ const createCampaign = asyncHandler(async (req, res) => {
 
     for (const wishlist of wishlists) {
 
-      await Notification.findOneAndUpdate(
+      const notification = await Notification.findOneAndUpdate(
         {
           userId: String(wishlist.userId),
           productId,
@@ -87,6 +88,8 @@ const createCampaign = asyncHandler(async (req, res) => {
           setDefaultsOnInsert: true,
         }
       );
+
+      publishNotification(notification);
     }
   }
 
@@ -151,7 +154,7 @@ const updateCampaign = asyncHandler(async (req, res) => {
 
     for (const wishlist of wishlists) {
 
-      await Notification.findOneAndUpdate(
+      const notification = await Notification.findOneAndUpdate(
         {
           userId: String(wishlist.userId),
           productId,
@@ -183,6 +186,8 @@ const updateCampaign = asyncHandler(async (req, res) => {
           setDefaultsOnInsert: true,
         }
       );
+
+      publishNotification(notification);
     }
   }
 

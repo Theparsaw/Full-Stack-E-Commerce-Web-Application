@@ -3,6 +3,7 @@ const express = require("express");
 const {
   getMyNotifications,
   markNotificationAsRead,
+  streamMyNotifications,
 } = require("../controllers/notificationController");
 
 const {
@@ -10,6 +11,8 @@ const {
 } = require("../middleware/authMiddleware");
 
 const router = express.Router();
+
+router.get("/stream", streamMyNotifications);
 
 router.use(authMiddleware);
 
