@@ -367,13 +367,13 @@ describe("payment, delivery, and tracking coverage", () => {
         1,
         { productId: "prod-1", quantityInStock: { $gte: 2 } },
         { $inc: { quantityInStock: -2 } },
-        expect.objectContaining({ new: true }),
+        expect.objectContaining({ returnDocument: "after" }),
       );
       expect(Product.findOneAndUpdate).toHaveBeenNthCalledWith(
         2,
         { productId: "prod-2", quantityInStock: { $gte: 1 } },
         { $inc: { quantityInStock: -1 } },
-        expect.objectContaining({ new: true }),
+        expect.objectContaining({ returnDocument: "after" }),
       );
       expect(order.status).toBe("paid");
       expect(order.paidAt).toEqual(expect.any(Date));
@@ -446,8 +446,13 @@ describe("payment, delivery, and tracking coverage", () => {
         status: "success",
         save: jest.fn().mockResolvedValue(true),
       };
+      const failedOrder = {
+        ...order,
+        status: "payment_failed",
+      };
 
       Order.findById.mockResolvedValue(order);
+      Order.findOneAndUpdate.mockResolvedValue(failedOrder);
       Product.findOne
         .mockResolvedValueOnce({ productId: "prod-1", quantityInStock: 5 })
         .mockResolvedValueOnce({ productId: "prod-2", quantityInStock: 8 });
@@ -462,7 +467,11 @@ describe("payment, delivery, and tracking coverage", () => {
 
       await processPayment(req, res);
 
-      expect(order.status).toBe("payment_failed");
+      expect(Order.findOneAndUpdate).toHaveBeenCalledWith(
+        { _id: order._id, status: { $ne: "paid" } },
+        { $set: { status: "payment_failed" } },
+        { returnDocument: "after" },
+      );
       expect(Product.findOneAndUpdate).toHaveBeenCalledTimes(2);
       expect(cart.save).toHaveBeenCalled();
       expect(payment.status).toBe("refunded");
@@ -472,8 +481,78 @@ describe("payment, delivery, and tracking coverage", () => {
       expect(res.status).toHaveBeenCalledWith(500);
       expect(res.json).toHaveBeenCalledWith({
         success: false,
-        message: "A system error occurred while finalizing your order. You have not been charged.",
+        message: "A system error occurred while finalizing your order. Your payment has been refunded.",
+        paymentStatus: "refunded",
+        order: expect.objectContaining({
+          id: order._id,
+          status: "payment_failed",
+        }),
         error: "insert failed",
+      });
+    });
+
+    test("refunds payment and preserves paid order when stock finalization loses a race", async () => {
+      const req = {
+        params: { orderId: "order-1" },
+        body: {
+          cardHolder: "Ada Lovelace",
+          cardNumber: "4242424242424242",
+          expiryMonth: "12",
+          expiryYear: "2099",
+          cvv: "123",
+        },
+        user: { id: "user-1" },
+      };
+      const res = createRes();
+      const order = buildOrder();
+      const paidOrder = {
+        ...order,
+        status: "paid",
+        paidAt: new Date("2026-04-23T10:00:00.000Z"),
+      };
+      const payment = {
+        _id: "payment-1",
+        status: "success",
+        save: jest.fn().mockResolvedValue(true),
+      };
+
+      Order.findById
+        .mockResolvedValueOnce(order)
+        .mockResolvedValueOnce(paidOrder);
+      Order.findOneAndUpdate.mockResolvedValue(null);
+      Product.findOne
+        .mockResolvedValueOnce({ productId: "prod-1", quantityInStock: 5 })
+        .mockResolvedValueOnce({ productId: "prod-2", quantityInStock: 8 });
+      Payment.create.mockResolvedValue(payment);
+      Product.findOneAndUpdate.mockResolvedValueOnce(null);
+
+      await processPayment(req, res);
+
+      expect(Product.findOneAndUpdate).toHaveBeenCalledWith(
+        { productId: "prod-1", quantityInStock: { $gte: 2 } },
+        { $inc: { quantityInStock: -2 } },
+        expect.objectContaining({ returnDocument: "after" }),
+      );
+      expect(Order.findOneAndUpdate).toHaveBeenCalledWith(
+        { _id: order._id, status: { $ne: "paid" } },
+        { $set: { status: "payment_failed" } },
+        { returnDocument: "after" },
+      );
+      expect(payment.status).toBe("refunded");
+      expect(payment.message).toBe("Payment refunded due to stock concurrency error");
+      expect(payment.save).toHaveBeenCalled();
+      expect(Delivery.create).not.toHaveBeenCalled();
+      expect(Invoice.create).not.toHaveBeenCalled();
+      expect(res.status).toHaveBeenCalledWith(409);
+      expect(res.json).toHaveBeenCalledWith({
+        success: false,
+        message: "Stock changed while finalizing your order. Your payment has been refunded.",
+        paymentStatus: "refunded",
+        order: expect.objectContaining({
+          id: order._id,
+          status: "paid",
+        }),
+        error: "Concurrency Error: Not enough stock remaining for Phone.",
       });
     });
 

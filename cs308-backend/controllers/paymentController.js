@@ -253,11 +253,13 @@ const processPayment = async (req, res) => {
             quantityInStock: { $gte: item.quantity } 
           },
           { $inc: { quantityInStock: -item.quantity } },
-          { session, new: true }
+          { session, returnDocument: "after" }
         );
 
         if (!product) {
-          throw new Error(`Concurrency Error: Not enough stock remaining for ${item.name}.`);
+          const error = new Error(`Concurrency Error: Not enough stock remaining for ${item.name}.`);
+          error.code = "STOCK_CONCURRENCY";
+          throw error;
         }
       }
 
@@ -291,8 +293,12 @@ const processPayment = async (req, res) => {
       session.endSession();
       console.error("Transaction aborted:", transactionError);
 
-      order.status = "payment_failed"; 
-      await order.save();
+      const updatedOrder = await Order.findOneAndUpdate(
+        { _id: order._id, status: { $ne: "paid" } },
+        { $set: { status: "payment_failed" } },
+        { returnDocument: "after" }
+      );
+      const responseOrder = updatedOrder || await Order.findById(order._id);
       
       if (payment.status === "success") {
         payment.status = "refunded";
@@ -300,9 +306,15 @@ const processPayment = async (req, res) => {
         await payment.save();
       }
 
-      return res.status(500).json({
+      const isStockConcurrencyError = transactionError.code === "STOCK_CONCURRENCY";
+
+      return res.status(isStockConcurrencyError ? 409 : 500).json({
         success: false,
-        message: "A system error occurred while finalizing your order. You have not been charged.",
+        message: isStockConcurrencyError
+          ? "Stock changed while finalizing your order. Your payment has been refunded."
+          : "A system error occurred while finalizing your order. Your payment has been refunded.",
+        paymentStatus: payment.status,
+        order: responseOrder ? serializeOrder(responseOrder) : null,
         error: transactionError.message
       });
     }
