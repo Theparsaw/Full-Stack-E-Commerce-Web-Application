@@ -596,7 +596,7 @@ describe("payment, delivery, and tracking coverage", () => {
       expect(res.json).toHaveBeenCalledWith(
         expect.objectContaining({
           success: false,
-          message: "Payment was declined",
+          message: "Use a card number ending in an even digit",
           paymentStatus: "failed",
           payment: expect.objectContaining({
             id: "payment-1",

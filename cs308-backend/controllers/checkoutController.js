@@ -3,6 +3,17 @@ const Product = require("../models/Product");
 const Order = require("../models/Order");
 const { serializeOrder } = require("../utils/orderTracking");
 
+const assertCartAccess = (cart, userId) => {
+  if (String(cart.userId) !== String(userId)) {
+    return {
+      valid: false,
+      message: "You are not allowed to access this cart",
+    };
+  }
+
+  return { valid: true };
+};
+
 const validateCartStock = async (cartItems) => {
   for (const item of cartItems) {
     const product = await Product.findOne({ productId: item.productId });
@@ -39,6 +50,12 @@ const getCheckoutCart = async (req, res) => {
       });
     }
 
+    const accessCheck = assertCartAccess(cart, req.user.id);
+
+    if (!accessCheck.valid) {
+      return res.status(403).json(accessCheck);
+    }
+
     return res.status(200).json({
       cartId: cart.cartId,
       items: cart.items,
@@ -63,6 +80,12 @@ const validateCheckout = async (req, res) => {
       return res.status(400).json({
         message: "Cart is empty or not found",
       });
+    }
+
+    const accessCheck = assertCartAccess(cart, req.user.id);
+
+    if (!accessCheck.valid) {
+      return res.status(403).json(accessCheck);
     }
 
     const stockCheck = await validateCartStock(cart.items);
@@ -93,6 +116,12 @@ const createOrder = async (req, res) => {
       return res.status(400).json({
         message: "Cart is empty or not found",
       });
+    }
+
+    const accessCheck = assertCartAccess(cart, req.user.id);
+
+    if (!accessCheck.valid) {
+      return res.status(403).json(accessCheck);
     }
 
     const stockCheck = await validateCartStock(cart.items);

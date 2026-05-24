@@ -3,7 +3,6 @@ const Product = require("../models/Product");
 const AppError = require("../utils/appError");
 const asyncHandler = require("../utils/asyncHandler");
 const { getDiscountedPrice } = require("../utils/discount");
-const { processPayment } = require("../utils/paymentGateway");
 
 const calculateTotalPrice = (items) =>
   items.reduce((total, item) => total + item.unitPrice * item.quantity, 0);
@@ -229,85 +228,9 @@ const removeCartItem = asyncHandler(async (req, res) => {
   return res.status(200).json(serializeCart(cart));
 });
 
-const checkoutCart = asyncHandler(async (req, res) => {
-  const { cartId } = req.params;
-  const { paymentMethod } = req.body;
-  const cart = await Cart.findOne({ cartId });
-
-  if (!cart) {
-    throw new AppError("Cart not found", 404, "CART_NOT_FOUND");
-  }
-
-  await claimLegacyCartIfNeeded(cart, req.user.id);
-  assertCartAccess(cart, req.user.id);
-
-  if (cart.items.length === 0) {
-    throw new AppError("Cart is empty", 400, "EMPTY_CART");
-  }
-
-  const products = await Product.find({
-    productId: { $in: cart.items.map((item) => item.productId) },
-  });
-  const productsById = products.reduce((acc, product) => {
-    acc[product.productId] = product;
-    return acc;
-  }, {});
-
-  for (const item of cart.items) {
-    const product = productsById[item.productId];
-
-    if (!product) {
-      throw new AppError(
-        `Product ${item.productId} no longer exists`,
-        404,
-        "PRODUCT_NOT_FOUND"
-      );
-    }
-
-    if (item.quantity > product.quantityInStock) {
-      throw new AppError(
-        "Requested quantity exceeds available stock",
-        400,
-        "INSUFFICIENT_STOCK",
-        { productId: item.productId, availableStock: product.quantityInStock }
-      );
-    }
-  }
-
-  const paymentResult = await processPayment({
-    amount: cart.totalPrice,
-    paymentMethod,
-  });
-
-  for (const item of cart.items) {
-    const product = productsById[item.productId];
-    product.quantityInStock -= item.quantity;
-    await product.save();
-  }
-
-  const purchasedItems = cart.items.map((item) => ({
-    productId: item.productId,
-    name: item.name,
-    quantity: item.quantity,
-    unitPrice: item.unitPrice,
-  }));
-
-  cart.items = [];
-  cart.totalPrice = 0;
-  await cart.save();
-
-  return res.status(200).json({
-    message: "Checkout completed successfully",
-    transactionId: paymentResult.transactionId,
-    totalPrice: paymentResult.amount,
-    items: purchasedItems,
-  });
-});
-
 module.exports = {
   getCart,
   addItemToCart,
   updateCartItemQuantity,
   removeCartItem,
-  checkoutCart,
 };

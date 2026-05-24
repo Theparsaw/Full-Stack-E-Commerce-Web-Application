@@ -93,14 +93,29 @@ describe("Security and end-to-end integration", () => {
     const registerRes = await registerCustomer("payment-fail");
     const token = registerRes.body.token;
     const cartId = createCartId("payment-fail");
+    const productId = `payment-fail-product-${Date.now()}`;
     createdCartIds.push(cartId);
+    createdProductIds.push(productId);
+
+    await Product.create({
+      productId,
+      categoryId: "security-test",
+      name: "Payment Failure Product",
+      model: "Payment Failure Stock",
+      serialNumber: `${productId}-serial`,
+      description: "Product used to validate declined payment stock behavior",
+      quantityInStock: 4,
+      price: 100,
+      warrantyStatus: "Test warranty",
+      distributorInfo: "Test distributor",
+    });
 
     await request(app)
       .post(`/api/cart/${cartId}/items`)
       .set("Authorization", `Bearer ${token}`)
-      .send({ productId: "p001", quantity: 1 });
+      .send({ productId, quantity: 1 });
 
-    const stockBefore = await Product.findOne({ productId: "p001" }).lean();
+    const stockBefore = await Product.findOne({ productId }).lean();
 
     const createOrderRes = await request(app)
       .post(`/api/checkout/${cartId}/order`)
@@ -124,7 +139,7 @@ describe("Security and end-to-end integration", () => {
     expect(paymentRes.body.success).toBe(false);
     expect(paymentRes.body.paymentStatus).toBe("failed");
 
-    const stockAfter = await Product.findOne({ productId: "p001" }).lean();
+    const stockAfter = await Product.findOne({ productId }).lean();
     const cartAfter = await Cart.findOne({ cartId }).lean();
     expect(stockAfter.quantityInStock).toBe(stockBefore.quantityInStock);
     expect(cartAfter.items).toHaveLength(1);

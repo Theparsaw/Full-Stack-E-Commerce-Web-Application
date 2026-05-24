@@ -312,6 +312,3 @@ export const removeCartItem = (productId, cartId = getCartId()) =>
   authStore.isLoggedIn
     ? removeServerCartItem(productId, cartId)
     : removeGuestCartItem(productId)
-
-export const checkoutCart = (paymentMethod, cartId = getCartId()) =>
-  api.post(`/cart/${cartId}/checkout`, { paymentMethod })

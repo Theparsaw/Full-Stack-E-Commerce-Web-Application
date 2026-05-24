@@ -4,6 +4,7 @@ const app = require("../server");
 const User = require("../models/User");
 const Order = require("../models/Order");
 const Payment = require("../models/Payment");
+const Product = require("../models/Product");
 
 /**
  * Mock Payment Cards:
@@ -21,9 +22,11 @@ const Payment = require("../models/Payment");
 
 const createEmail = (label) => `payhard-${label}-${Date.now()}@example.com`;
 const createdUserIds = [];
+const createdProductIds = [];
 let customerToken;
 let customerId;
 let testOrderId;
+let productId;
 
 beforeAll(async () => {
   const reg = await request(app).post("/api/auth/register").send({
@@ -35,11 +38,27 @@ beforeAll(async () => {
   customerId = reg.body.user.id;
   createdUserIds.push(customerId);
 
+  productId = `payhard-product-${Date.now()}`;
+  createdProductIds.push(productId);
+
+  await Product.create({
+    productId,
+    categoryId: "payment-hardening-test",
+    name: "Payment Hardening Product",
+    model: "Payment Hardening Stock",
+    serialNumber: `${productId}-serial`,
+    description: "Product used for payment hardening tests",
+    quantityInStock: 5,
+    price: 999,
+    warrantyStatus: "Test warranty",
+    distributorInfo: "Test distributor",
+  });
+
   // Create a pending order directly in DB
   const order = await Order.create({
     userId: customerId,
     cartId: `cart-payhard-${Date.now()}`,
-    items: [{ productId: "p001", name: "Apple iPhone", quantity: 1, unitPrice: 999 }],
+    items: [{ productId, name: "Payment Hardening Stock", quantity: 1, unitPrice: 999 }],
     totalPrice: 999,
     status: "pending_payment",
     address: "Test Address",
@@ -50,6 +69,7 @@ beforeAll(async () => {
 afterAll(async () => {
   await Order.findByIdAndDelete(testOrderId);
   await Payment.deleteMany({ userId: customerId });
+  await Product.deleteMany({ productId: { $in: createdProductIds } });
   await User.deleteMany({ _id: { $in: createdUserIds } });
   await mongoose.connection.close();
 });
@@ -110,7 +130,7 @@ describe("Payment Data Hardening", () => {
     const order = await Order.create({
       userId: customerId,
       cartId: `cart-declined-${Date.now()}`,
-      items: [{ productId: "p002", name: "Test Product", quantity: 1, unitPrice: 50 }],
+      items: [{ productId, name: "Payment Hardening Stock", quantity: 1, unitPrice: 50 }],
       totalPrice: 50,
       status: "pending_payment",
       address: "Test Address",

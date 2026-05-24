@@ -56,6 +56,9 @@ const simulatePaymentResult = (cardNumber) => {
   return lastDigit % 2 === 0;
 };
 
+const getDeclinedPaymentMessage = () =>
+  "Use a card number ending in an even digit";
+
 const serializeDelivery = (delivery) => {
   if (!delivery) return null;
 
@@ -212,7 +215,7 @@ const processPayment = async (req, res) => {
       status: success ? "success" : "failed",
       cardLast4: cleanedCardNumber.slice(-4),
       transactionId: `TXN-${Date.now()}`,
-      message: success ? "Payment completed successfully" : "Payment was declined",
+      message: success ? "Payment completed successfully" : getDeclinedPaymentMessage(),
     });
 
     // IF PAYMENT FAILED, WE STOP HERE
@@ -222,7 +225,7 @@ const processPayment = async (req, res) => {
 
       return res.status(200).json({
         success: false,
-        message: "Payment was declined",
+        message: payment.message || getDeclinedPaymentMessage(),
         paymentStatus: payment.status,
         payment: {
           id: payment._id,
