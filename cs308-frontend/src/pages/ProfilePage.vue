@@ -1002,7 +1002,7 @@ const fetchProfile = async () => {
       await fetchReturnRequests()
     }
   } catch (err) {
-    error.value = 'Failed to load profile. Please try again.'
+    error.value = err?.response?.data?.message || 'Failed to load profile. Please try again.'
   } finally {
     loading.value = false
   }

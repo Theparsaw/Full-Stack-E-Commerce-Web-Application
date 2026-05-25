@@ -70,8 +70,22 @@
             
             <td v-if="currentTab === 'pending'" class="px-6 py-4">
               <div class="flex flex-col items-center justify-center gap-2 xl:flex-row">
-                <button @click="approve(req._id)" class="w-24 rounded bg-green-600 px-3 py-1 text-sm text-white hover:bg-green-700">Approve</button>
-                <button @click="openRejectModal(req._id)" class="w-24 rounded bg-red-600 px-3 py-1 text-sm text-white hover:bg-red-700">Reject</button>
+                <button
+                  type="button"
+                  @click="openApproveModal(req)"
+                  :disabled="approvingRequestId === req._id"
+                  class="w-24 rounded bg-green-600 px-3 py-1 text-sm text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:bg-green-300"
+                >
+                  {{ approvingRequestId === req._id ? 'Approving' : 'Approve' }}
+                </button>
+                <button
+                  type="button"
+                  @click="openRejectModal(req._id)"
+                  :disabled="approvingRequestId === req._id"
+                  class="w-24 rounded bg-red-600 px-3 py-1 text-sm text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-red-300"
+                >
+                  Reject
+                </button>
               </div>
             </td>
 
@@ -90,6 +104,33 @@
           </tr>
         </tbody>
       </table>
+    </div>
+
+    <div v-if="showApproveModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div class="bg-white rounded-lg p-6 w-96 shadow-xl">
+        <h3 class="text-lg font-bold mb-2">Approve Return</h3>
+        <p class="text-sm text-gray-700 mb-5">
+          Approve this return and restore stock?
+        </p>
+        <div class="flex justify-end space-x-2">
+          <button
+            type="button"
+            @click="closeApproveModal"
+            :disabled="Boolean(approvingRequestId)"
+            class="px-4 py-2 bg-gray-200 rounded disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            @click="confirmApprove"
+            :disabled="Boolean(approvingRequestId)"
+            class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:cursor-not-allowed disabled:bg-green-300"
+          >
+            {{ approvingRequestId ? 'Approving...' : 'Approve' }}
+          </button>
+        </div>
+      </div>
     </div>
 
     <div v-if="showModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -113,9 +154,12 @@ import { resolveAssetUrl } from '../../api/authApi'
 const currentTab = ref('pending')
 const requests = ref([])
 const isLoading = ref(true)
+const showApproveModal = ref(false)
 const showModal = ref(false)
+const selectedApproveRequestId = ref(null)
 const selectedRequestId = ref(null)
 const managerNotes = ref('')
+const approvingRequestId = ref(null)
 
 const loadRequests = async () => {
   isLoading.value = true
@@ -144,13 +188,32 @@ const formatReviewer = (reviewer) => {
 // Automatically reload the data whenever the tab is clicked
 watch(currentTab, loadRequests)
 
-const approve = async (id) => {
-  if (!confirm('Approve return and restore stock?')) return
+const openApproveModal = (request) => {
+  if (approvingRequestId.value) return
+  selectedApproveRequestId.value = request._id
+  showApproveModal.value = true
+}
+
+const closeApproveModal = () => {
+  if (approvingRequestId.value) return
+  showApproveModal.value = false
+  selectedApproveRequestId.value = null
+}
+
+const confirmApprove = async () => {
+  if (approvingRequestId.value || !selectedApproveRequestId.value) return
+
+  approvingRequestId.value = selectedApproveRequestId.value
+
   try {
-    await approveReturnRequest(id)
-    loadRequests()
+    await approveReturnRequest(selectedApproveRequestId.value)
+    showApproveModal.value = false
+    selectedApproveRequestId.value = null
+    await loadRequests()
   } catch (error) {
     alert('Failed to approve return.')
+  } finally {
+    approvingRequestId.value = null
   }
 }
 

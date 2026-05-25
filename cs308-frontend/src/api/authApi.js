@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { API_BASE_URL, resolveBackendAssetUrl } from './config'
+import { authStore } from '../store/auth'
 
 // Create an axios instance pointing to our backend
 const api = axios.create({
@@ -18,7 +19,7 @@ export const loginUser = (data) => api.post('/auth/login', data)
 // Fetch the full profile of the currently logged in user
 // We pass the token in the Authorization header so the backend knows who we are
 export const getProfile = () => {
-  const token = localStorage.getItem('token')
+  const token = authStore.token || localStorage.getItem('token')
   return api.get('/auth/me', {
     headers: {
       Authorization: `Bearer ${token}`,
@@ -28,7 +29,7 @@ export const getProfile = () => {
 
 // Send updated profile fields for the currently logged in user
 export const updateProfile = (data) => {
-  const token = localStorage.getItem('token')
+  const token = authStore.token || localStorage.getItem('token')
   return api.put('/auth/me', data, {
     headers: {
       Authorization: `Bearer ${token}`,

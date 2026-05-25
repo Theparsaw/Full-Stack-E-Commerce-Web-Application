@@ -51,7 +51,10 @@ const authLimiter = rateLimit({
   message: { message: "Too many requests, please try again later." },
   standardHeaders: true,
   legacyHeaders: false,
-  skip: () => process.env.NODE_ENV === "test",
+  skip: (req) =>
+    process.env.NODE_ENV === "test" ||
+    req.path === "/me" ||
+    req.originalUrl === "/api/auth/me",
 });
 
 // Expose uploaded profile images so the frontend can display them by URL

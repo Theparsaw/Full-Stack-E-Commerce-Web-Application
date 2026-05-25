@@ -2,6 +2,7 @@ const Order = require("../models/Order");
 const Delivery = require("../models/Delivery");
 const Product = require("../models/Product");
 const { serializeTrackedOrder } = require("../utils/orderTracking");
+const mongoose = require("mongoose");
 
 const CANCELLABLE_DELIVERY_STATUSES = ["processing"];
 
@@ -39,31 +40,40 @@ const getMyOrders = async (req, res) => {
 };
 
 const cancelMyOrder = async (req, res) => {
+  const session = await mongoose.startSession();
+
   try {
     const { orderId } = req.params;
 
-    const order = await Order.findById(orderId);
+    session.startTransaction();
+
+    const order = await Order.findById(orderId).session(session);
 
     if (!order) {
+      await session.abortTransaction();
       return res.status(404).json({ message: "Order not found" });
     }
 
     if (String(order.userId) !== String(req.user.id)) {
+      await session.abortTransaction();
       return res.status(403).json({ message: "Access denied" });
     }
 
     if (order.status === "cancelled") {
+      await session.abortTransaction();
       return res.status(400).json({ message: "Order is already cancelled" });
     }
 
     if (order.status !== "paid") {
+      await session.abortTransaction();
       return res.status(400).json({ message: "Only paid orders can be cancelled" });
     }
 
-    const delivery = await Delivery.findOne({ orderId: order._id.toString() });
+    const delivery = await Delivery.findOne({ orderId: order._id.toString() }).session(session);
     const deliveryStatus = delivery?.status || "processing";
 
     if (!CANCELLABLE_DELIVERY_STATUSES.includes(deliveryStatus)) {
+      await session.abortTransaction();
       return res.status(400).json({
         message: "Orders cannot be cancelled after shipment or delivery",
       });
@@ -76,24 +86,34 @@ const cancelMyOrder = async (req, res) => {
         status: "paid",
       },
       { status: "cancelled" },
-      { new: true }
+      { returnDocument: "after", session }
     );
 
     if (!cancelledOrder) {
+      await session.abortTransaction();
       return res.status(400).json({ message: "Order is no longer eligible for cancellation" });
     }
 
     for (const item of order.items) {
-      await Product.updateOne(
+      const restoredProduct = await Product.findOneAndUpdate(
         { productId: item.productId },
-        { $inc: { quantityInStock: item.quantity } }
+        { $inc: { quantityInStock: item.quantity } },
+        { returnDocument: "after", session }
       );
+
+      if (!restoredProduct) {
+        const error = new Error(`Product ${item.productId} was not found`);
+        error.statusCode = 404;
+        throw error;
+      }
     }
 
     if (delivery) {
       delivery.status = "cancelled";
-      await delivery.save();
+      await delivery.save({ session });
     }
+
+    await session.commitTransaction();
 
     return res.status(200).json({
       message: "Order cancelled successfully",
@@ -103,10 +123,18 @@ const cancelMyOrder = async (req, res) => {
       ),
     });
   } catch (error) {
-    return res.status(500).json({
-      message: "Failed to cancel order",
+    if (session.inTransaction()) {
+      await session.abortTransaction();
+    }
+
+    const statusCode = error.statusCode || 500;
+
+    return res.status(statusCode).json({
+      message: statusCode === 500 ? "Failed to cancel order" : error.message,
       error: error.message,
     });
+  } finally {
+    session.endSession();
   }
 };
 
