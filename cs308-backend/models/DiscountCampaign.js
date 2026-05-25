@@ -47,4 +47,11 @@ discountCampaignSchema.pre("save", function () {
   }
 });
 
+discountCampaignSchema.index({
+  productIds: 1,
+  isActive: 1,
+  startDate: 1,
+  endDate: 1,
+});
+
 module.exports = mongoose.model("DiscountCampaign", discountCampaignSchema);

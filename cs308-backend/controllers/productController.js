@@ -6,7 +6,10 @@ const path = require("path");
 const AppError = require("../utils/appError");
 const asyncHandler = require("../utils/asyncHandler");
 const { uploadProductImageToCloudinary } = require("../utils/cloudinary");
-const { getDiscountedPrice } = require("../utils/discount");
+const {
+  enrichProductsWithDiscounts,
+  getDiscountedPrice,
+} = require("../utils/discount");
 
 const deleteLocalProductImage = async (imagePath) => {
   if (!imagePath || !imagePath.startsWith("/uploads/product-images/")) {
@@ -269,19 +272,7 @@ const getAllProducts = asyncHandler(async (req, res) => {
       buildSortStage(sort),
     ]);
 
-    const productsWithDiscounts = await Promise.all(
-      products.map(async (product) => {
-        const pricing = await getDiscountedPrice(product);
-
-        return {
-          ...product,
-          originalPrice: pricing.originalPrice,
-          discountedPrice: pricing.discountedPrice,
-          hasDiscount: pricing.hasDiscount,
-          discountPercentage: pricing.discountPercentage,
-        };
-      })
-    );
+    const productsWithDiscounts = await enrichProductsWithDiscounts(products);
 
     return res.status(200).json(sortByDisplayPrice(productsWithDiscounts, sort));
   }
@@ -314,39 +305,13 @@ const getAllProducts = asyncHandler(async (req, res) => {
     const combinedResults = mergeProductsById(fallbackResults, atlasResults);
 
     if (combinedResults.length > 0) {
-      const productsWithDiscounts = await Promise.all(
-        combinedResults.map(async (product) => {
-          const pricing = await getDiscountedPrice(product);
-
-          return {
-            ...product,
-            originalPrice: pricing.originalPrice,
-            discountedPrice: pricing.discountedPrice,
-            hasDiscount: pricing.hasDiscount,
-            discountPercentage: pricing.discountPercentage,
-          };
-        })
-      );
+      const productsWithDiscounts =
+        await enrichProductsWithDiscounts(combinedResults);
 
       return res.status(200).json(sortByDisplayPrice(productsWithDiscounts, sort));
     }
 
-    // Fallback: regex search with sort applied
-    const productsWithDiscounts = await Promise.all(
-      fallbackResults.map(async (product) => {
-        const pricing = await getDiscountedPrice(product);
-
-        return {
-          ...product,
-          originalPrice: pricing.originalPrice,
-          discountedPrice: pricing.discountedPrice,
-          hasDiscount: pricing.hasDiscount,
-          discountPercentage: pricing.discountPercentage,
-        };
-      })
-    );
-
-    return res.status(200).json(sortByDisplayPrice(productsWithDiscounts, sort));
+    return res.status(200).json([]);
 
   } catch (error) {
     // Safe fallback if Atlas Search is unavailable
@@ -357,19 +322,7 @@ const getAllProducts = asyncHandler(async (req, res) => {
       ...buildRatingStages(),
       buildSortStage(sort),
     ]);
-     const productsWithDiscounts = await Promise.all(
-      products.map(async (product) => {
-        const pricing = await getDiscountedPrice(product);
-
-        return {
-          ...product,
-          originalPrice: pricing.originalPrice,
-          discountedPrice: pricing.discountedPrice,
-          hasDiscount: pricing.hasDiscount,
-          discountPercentage: pricing.discountPercentage,
-        };
-      })
-    );
+    const productsWithDiscounts = await enrichProductsWithDiscounts(products);
 
     return res.status(200).json(sortByDisplayPrice(productsWithDiscounts, sort));
   }
@@ -394,6 +347,8 @@ const getProductById = asyncHandler(async (req, res) => {
     discountedPrice: pricing.discountedPrice,
     hasDiscount: pricing.hasDiscount,
     discountPercentage: pricing.discountPercentage,
+    campaignName: pricing.campaignName,
+    activeCampaignName: pricing.activeCampaignName,
   });
 });
 

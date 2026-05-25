@@ -104,4 +104,6 @@ wishlistSchema.statics.removeProductReferences = function removeProductReference
   );
 };
 
+wishlistSchema.index({ "items.productId": 1 });
+
 module.exports = mongoose.model("Wishlist", wishlistSchema);
