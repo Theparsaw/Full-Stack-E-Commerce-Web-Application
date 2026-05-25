@@ -815,7 +815,7 @@ describe("payment, delivery, and tracking coverage", () => {
         return order;
       });
       Delivery.findOne.mockResolvedValue(delivery);
-      Product.updateOne.mockResolvedValue({ acknowledged: true });
+      Product.findOneAndUpdate.mockResolvedValue({ productId: "restored-product" });
 
       await cancelMyOrder(req, res);
 
@@ -826,17 +826,25 @@ describe("payment, delivery, and tracking coverage", () => {
           status: "paid",
         },
         { status: "cancelled" },
-        { new: true },
+        expect.objectContaining({
+          returnDocument: "after",
+        }),
       );
-      expect(Product.updateOne).toHaveBeenNthCalledWith(
+      expect(Product.findOneAndUpdate).toHaveBeenNthCalledWith(
         1,
         { productId: "prod-1" },
         { $inc: { quantityInStock: 2 } },
+        expect.objectContaining({
+          returnDocument: "after",
+        }),
       );
-      expect(Product.updateOne).toHaveBeenNthCalledWith(
+      expect(Product.findOneAndUpdate).toHaveBeenNthCalledWith(
         2,
         { productId: "prod-2" },
         { $inc: { quantityInStock: 1 } },
+        expect.objectContaining({
+          returnDocument: "after",
+        }),
       );
       expect(order.status).toBe("cancelled");
       expect(order.save).not.toHaveBeenCalled();
@@ -871,7 +879,7 @@ describe("payment, delivery, and tracking coverage", () => {
 
       expect(res.status).toHaveBeenCalledWith(403);
       expect(res.json).toHaveBeenCalledWith({ message: "Access denied" });
-      expect(Product.updateOne).not.toHaveBeenCalled();
+      expect(Product.findOneAndUpdate).not.toHaveBeenCalled();
       expect(order.save).not.toHaveBeenCalled();
     });
 
@@ -898,7 +906,7 @@ describe("payment, delivery, and tracking coverage", () => {
       expect(res.json).toHaveBeenCalledWith({
         message: "Orders cannot be cancelled after shipment or delivery",
       });
-      expect(Product.updateOne).not.toHaveBeenCalled();
+      expect(Product.findOneAndUpdate).not.toHaveBeenCalled();
       expect(order.save).not.toHaveBeenCalled();
     });
   });
