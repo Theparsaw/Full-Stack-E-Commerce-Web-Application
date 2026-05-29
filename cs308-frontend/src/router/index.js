@@ -27,10 +27,16 @@ import SalesPricingPage from '../pages/admin/SalesPricingPage.vue'
 import AdminRefundsPage from '../pages/admin/AdminRefundsPage.vue'
 import SalesInvoicesPage from '../pages/admin/SalesInvoicesPage.vue'
 import FinancialReportPage from '../pages/admin/FinancialReportPage.vue'
+import SupportAgentPage from '../pages/admin/SupportAgentPage.vue'
 
 const adminAreaMeta = {
   requiresAuth: true,
-  roles: ['sales_manager', 'product_manager'],
+  roles: ['sales_manager', 'product_manager', 'support_agent'],
+}
+
+const supportAgentMeta = {
+  requiresAuth: true,
+  roles: ['support_agent'],
 }
 
 const productManagerMeta = {
@@ -64,9 +70,9 @@ const routes = [
       {
         path: '',
         redirect: () => {
-          return authStore.role === 'sales_manager'
-            ? '/admin/pricing'
-            : '/admin/dashboard'
+          if (authStore.role === 'sales_manager') return '/admin/pricing'
+          if (authStore.role === 'support_agent') return '/admin/support'
+          return '/admin/dashboard'
         },
       },
       {
@@ -134,6 +140,11 @@ const routes = [
         component: FinancialReportPage,
         meta: salesManagerMeta,
       },
+      {
+        path: 'support',
+        component: SupportAgentPage,
+        meta: supportAgentMeta,
+      },
     ],
   },
 ]
@@ -163,6 +174,10 @@ router.beforeEach((to, from, next) => {
 
       if (authStore.role === 'product_manager') {
         return next('/admin/dashboard')
+      }
+
+      if (authStore.role === 'support_agent') {
+        return next('/admin/support')
       }
 
       return next('/')

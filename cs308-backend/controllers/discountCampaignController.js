@@ -2,8 +2,10 @@ const Product = require("../models/Product");
 const AppError = require("../utils/appError");
 const asyncHandler = require("../utils/asyncHandler");
 const Wishlist = require("../models/Wishlist");
-const Notification = require("../models/Notification")
+const Notification = require("../models/Notification");
 const DiscountCampaign = require("../models/DiscountCampaign");
+const User = require("../models/User");
+const { sendDiscountNotificationEmail } = require("../utils/emailSender");
 const { publishNotification } = require("../utils/notificationEvents");
 
 
@@ -36,6 +38,23 @@ const createCampaign = asyncHandler(async (req, res) => {
       "One or more products do not exist",
       400,
       "INVALID_PRODUCTS"
+    );
+  }
+
+  // Check for conflicting active campaigns (date range overlap for same products)
+  const conflicting = await DiscountCampaign.findOne({
+    isActive: true,
+    productIds: { $in: productIds },
+    startDate: { $lt: new Date(endDate) },
+    endDate: { $gt: new Date(startDate) },
+  });
+
+  if (conflicting) {
+    const overlap = conflicting.productIds.filter((id) => productIds.includes(id));
+    throw new AppError(
+      `One or more products already have an active campaign in this date range: ${overlap.join(", ")} (campaign: "${conflicting.name}")`,
+      400,
+      "CAMPAIGN_CONFLICT"
     );
   }
 
@@ -90,6 +109,22 @@ const createCampaign = asyncHandler(async (req, res) => {
       );
 
       publishNotification(notification);
+
+      // Send email notification to the wishlist owner
+      try {
+        const customer = await User.findById(wishlist.userId).select("name email");
+        if (customer) {
+          await sendDiscountNotificationEmail(
+            customer.email,
+            customer.name,
+            product?.model || product?.name || "A wishlisted product",
+            campaign.discountPercentage,
+            campaign.name
+          );
+        }
+      } catch (emailError) {
+        console.error("Discount email failed:", emailError);
+      }
     }
   }
 
@@ -130,15 +165,28 @@ const updateCampaign = asyncHandler(async (req, res) => {
     endDate,
   } = req.body;
 
+  // Check for conflicts with OTHER active campaigns (exclude this one)
+  const conflictingOnUpdate = await DiscountCampaign.findOne({
+    _id: { $ne: campaign._id },
+    isActive: true,
+    productIds: { $in: productIds },
+    startDate: { $lt: new Date(endDate) },
+    endDate: { $gt: new Date(startDate) },
+  });
+
+  if (conflictingOnUpdate) {
+    const overlap = conflictingOnUpdate.productIds.filter((id) => productIds.includes(id));
+    throw new AppError(
+      `One or more products already have an active campaign in this date range: ${overlap.join(", ")} (campaign: "${conflictingOnUpdate.name}")`,
+      400,
+      "CAMPAIGN_CONFLICT"
+    );
+  }
+
   campaign.name = name;
-
-  campaign.discountPercentage =
-    discountPercentage;
-
+  campaign.discountPercentage = discountPercentage;
   campaign.startDate = startDate;
-
   campaign.endDate = endDate;
-
   campaign.productIds = productIds;
 
   await campaign.save();

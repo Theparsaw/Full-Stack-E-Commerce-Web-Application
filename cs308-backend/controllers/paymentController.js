@@ -243,10 +243,15 @@ const processPayment = async (req, res) => {
     // ==========================================
     // 🟢 MONGODB TRANSACTION LOGIC STARTS HERE 🟢
     // ==========================================
+
+    // Fetch user address before transaction to use as delivery address
+    const payingUser = await User.findById(req.user.id).select("address name email");
+    const deliveryAddress = payingUser?.address?.trim() || "Address not provided";
+
     const session = await mongoose.startSession();
     session.startTransaction();
 
-    let delivery; 
+    let delivery;
 
     try {
       for (const item of order.items) {
@@ -282,7 +287,7 @@ const processPayment = async (req, res) => {
         userId: order.userId,
         items: order.items,
         totalPrice: order.totalPrice,
-        address: "Default address",
+        address: deliveryAddress,
         status: "processing",
       }], { session });
       

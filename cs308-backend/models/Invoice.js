@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { encryptValue, decryptValue } = require("../utils/encryption");
 
 const invoiceSchema = new mongoose.Schema(
   {
@@ -15,6 +16,8 @@ const invoiceSchema = new mongoose.Schema(
       type: String,
       required: true,
       unique: true,
+      set: encryptValue,
+      get: decryptValue,
     },
     amount: {
       type: Number,
@@ -26,7 +29,11 @@ const invoiceSchema = new mongoose.Schema(
       default: "generated",
     },
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+    toJSON: { getters: true },
+    toObject: { getters: true },
+  }
 );
 
 module.exports = mongoose.model("Invoice", invoiceSchema);

@@ -99,35 +99,61 @@
     </section>
 
     <section class="mb-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <!-- Revenue -->
       <div class="rounded-2xl border border-gray-200 bg-white p-5">
-        <p class="text-sm text-gray-500">Revenue</p>
+        <p class="text-sm font-medium text-gray-500">Total Revenue</p>
         <p class="mt-2 text-2xl font-bold text-gray-900">
           {{ formatCurrency(report.revenue) }}
         </p>
+        <p class="mt-1 text-xs text-gray-400">Collected from all paid orders</p>
       </div>
 
-      <div class="rounded-2xl border border-gray-200 bg-white p-5">
-        <p class="text-sm text-gray-500">Discount Loss</p>
-        <p class="mt-2 text-2xl font-bold text-red-600">
-          {{ formatCurrency(report.discountLoss) }}
+      <!-- Discount Loss -->
+      <div class="rounded-2xl border border-red-100 bg-red-50 p-5">
+        <p class="text-sm font-medium text-red-600">Discount Loss</p>
+        <p class="mt-2 text-2xl font-bold text-red-700">
+          − {{ formatCurrency(report.discountLoss) }}
         </p>
+        <p class="mt-1 text-xs text-red-400">Revenue lost due to applied discounts</p>
       </div>
 
-      <div class="rounded-2xl border border-gray-200 bg-white p-5">
-        <p class="text-sm text-gray-500">Estimated Profit / Loss</p>
+      <!-- Net Profit / Loss -->
+      <div
+        class="rounded-2xl border p-5"
+        :class="report.estimatedProfit >= 0
+          ? 'border-emerald-200 bg-emerald-50'
+          : 'border-red-200 bg-red-50'"
+      >
+        <div class="flex items-center gap-2">
+          <span
+            class="rounded-full px-2 py-0.5 text-xs font-bold uppercase tracking-wide"
+            :class="report.estimatedProfit >= 0
+              ? 'bg-emerald-200 text-emerald-800'
+              : 'bg-red-200 text-red-800'"
+          >
+            {{ report.estimatedProfit >= 0 ? '▲ Profit' : '▼ Loss' }}
+          </span>
+        </div>
         <p
           class="mt-2 text-2xl font-bold"
-          :class="report.estimatedProfit >= 0 ? 'text-emerald-700' : 'text-red-600'"
+          :class="report.estimatedProfit >= 0 ? 'text-emerald-700' : 'text-red-700'"
         >
-          {{ formatCurrency(report.estimatedProfit) }}
+          {{ report.estimatedProfit >= 0 ? '+' : '' }}{{ formatCurrency(report.estimatedProfit) }}
+        </p>
+        <p class="mt-1 text-xs"
+          :class="report.estimatedProfit >= 0 ? 'text-emerald-500' : 'text-red-400'"
+        >
+          Revenue minus discount losses
         </p>
       </div>
 
+      <!-- Orders & Items -->
       <div class="rounded-2xl border border-gray-200 bg-white p-5">
-        <p class="text-sm text-gray-500">Orders / Items</p>
+        <p class="text-sm font-medium text-gray-500">Orders & Items Sold</p>
         <p class="mt-2 text-2xl font-bold text-gray-900">
-          {{ report.orderCount }} / {{ report.itemsSold }}
+          {{ report.orderCount }} orders
         </p>
+        <p class="mt-1 text-xs text-gray-400">{{ report.itemsSold }} items total</p>
       </div>
     </section>
 
@@ -209,11 +235,14 @@
             <tr v-for="point in chartPoints" :key="point.key" class="text-gray-700">
               <td class="px-3 py-3 font-medium text-gray-900">{{ point.rangeLabel || point.label }}</td>
               <td class="px-3 py-3">{{ formatCurrency(point.revenue) }}</td>
-              <td
-                class="px-3 py-3 font-semibold"
-                :class="point.estimatedProfit >= 0 ? 'text-emerald-700' : 'text-red-600'"
-              >
-                {{ formatCurrency(point.estimatedProfit) }}
+              <td class="px-3 py-3">
+                <span
+                  class="inline-flex items-center gap-1 font-semibold"
+                  :class="point.estimatedProfit >= 0 ? 'text-emerald-700' : 'text-red-600'"
+                >
+                  <span class="text-xs font-bold">{{ point.estimatedProfit >= 0 ? '▲' : '▼' }}</span>
+                  {{ point.estimatedProfit >= 0 ? '+' : '' }}{{ formatCurrency(point.estimatedProfit) }}
+                </span>
               </td>
               <td class="px-3 py-3 text-red-600">{{ formatCurrency(point.discountLoss) }}</td>
               <td class="px-3 py-3">{{ point.orders }} / {{ point.itemsSold }}</td>

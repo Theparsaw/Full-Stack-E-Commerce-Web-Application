@@ -388,11 +388,11 @@
           </template>
 
           <router-link
-            v-if="authStore.isLoggedIn && ['sales_manager', 'product_manager'].includes(authStore.role)"
+            v-if="authStore.isLoggedIn && ['sales_manager', 'product_manager', 'support_agent'].includes(authStore.role)"
             :to="adminHomeRoute"
             class="px-4 py-2.5 rounded-xl bg-orange-500 text-white font-medium hover:bg-orange-600 transition"
           >
-            Admin
+            {{ authStore.role === 'support_agent' ? 'Support' : 'Admin' }}
           </router-link>
         </div>
       </div>
@@ -401,6 +401,8 @@
     <main>
       <router-view />
     </main>
+
+    <ChatWidget />
   </div>
 </template>
 
@@ -408,6 +410,7 @@
 import { computed, onBeforeUnmount, onMounted, watch, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { resolveAssetUrl } from './api/authApi'
+import ChatWidget from './components/ChatWidget.vue'
 import { getCart, resetCartId } from './api/cartApi'
 import { authStore } from './store/auth'
 import { cartStore } from './store/cart'
@@ -494,14 +497,9 @@ const showShoppingActions = computed(() =>
 )
 
 const adminHomeRoute = computed(() => {
-  if (authStore.role === 'sales_manager') {
-    return '/admin/pricing'
-  }
-
-  if (authStore.role === 'product_manager') {
-    return '/admin/dashboard'
-  }
-
+  if (authStore.role === 'sales_manager') return '/admin/pricing'
+  if (authStore.role === 'product_manager') return '/admin/dashboard'
+  if (authStore.role === 'support_agent') return '/admin/support'
   return '/'
 })
 

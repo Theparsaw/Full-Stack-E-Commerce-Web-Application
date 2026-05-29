@@ -91,6 +91,11 @@
 
           <div v-if="!isEditing" class="space-y-5">
             <div class="flex flex-col gap-1">
+              <span class="text-sm font-medium uppercase tracking-wide text-gray-400">Customer ID</span>
+              <span class="font-medium text-gray-800 font-mono text-sm">{{ user.id }}</span>
+            </div>
+
+            <div class="flex flex-col gap-1">
               <span class="text-sm font-medium uppercase tracking-wide text-gray-400">Email</span>
               <span class="font-medium text-gray-800">{{ user.email }}</span>
             </div>

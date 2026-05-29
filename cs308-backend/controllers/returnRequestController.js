@@ -4,6 +4,8 @@ const ReturnRequest = require("../models/ReturnRequest");
 const Order = require("../models/Order");
 const Delivery = require("../models/Delivery");
 const Product = require("../models/Product");
+const User = require("../models/User");
+const { sendRefundApprovedEmail } = require("../utils/emailSender");
 
 const RETURN_WINDOW_DAYS = 30;
 const RETURN_WINDOW_MS = RETURN_WINDOW_DAYS * 24 * 60 * 60 * 1000;
@@ -320,6 +322,23 @@ const approveReturnRequest = async (req, res) => {
       }
 
       await session.commitTransaction();
+
+      // Send refund approval email to customer (outside transaction)
+      try {
+        const customer = await User.findById(returnReq.userId).select("name email");
+        if (customer) {
+          const productNames = returnReq.items.map((i) => i.name).join(", ");
+          await sendRefundApprovedEmail(
+            customer.email,
+            customer.name,
+            returnReq.refundAmount,
+            productNames
+          );
+        }
+      } catch (emailError) {
+        console.error("Refund email failed:", emailError);
+      }
+
       return res.status(200).json({ success: true, data: returnReq });
     } catch (error) {
       if (session.inTransaction()) {

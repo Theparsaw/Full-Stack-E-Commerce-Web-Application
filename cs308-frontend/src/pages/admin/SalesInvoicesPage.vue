@@ -225,15 +225,27 @@ const downloadInvoicePdf = async (invoice) => {
     const blob = new Blob([res.data], { type: 'application/pdf' })
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
-
     link.href = url
     link.download = `${invoice.invoiceNumber}.pdf`
+    document.body.appendChild(link)
     link.click()
+    link.remove()
     URL.revokeObjectURL(url)
   } catch (err) {
-    error.value =
-      err?.response?.data?.message ||
-      'Failed to export invoice PDF'
+    // When responseType is 'blob', error response data is a Blob — parse it to get the message
+    let message = 'Failed to export invoice PDF'
+    if (err?.response?.data instanceof Blob) {
+      try {
+        const text = await err.response.data.text()
+        const parsed = JSON.parse(text)
+        message = parsed.message || message
+      } catch {
+        // ignore parse error, use default message
+      }
+    } else {
+      message = err?.response?.data?.message || message
+    }
+    error.value = message
   } finally {
     downloadingInvoiceId.value = ''
   }

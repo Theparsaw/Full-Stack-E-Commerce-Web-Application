@@ -64,4 +64,66 @@ const sendInvoiceEmail = async (toEmail, invoiceNumber, pdfBuffer) => {
   }
 };
 
-module.exports = { sendInvoiceEmail };
+const sendRefundApprovedEmail = async (toEmail, customerName, refundAmount, productNames) => {
+  try {
+    const transporter = await createTransporter();
+
+    const mailOptions = {
+      from: process.env.SMTP_FROM || '"CS308 Store" <noreply@cs308store.com>',
+      to: toEmail,
+      subject: `Your Refund of $${Number(refundAmount).toFixed(2)} Has Been Approved - CS308 Store`,
+      text: `Dear ${customerName},\n\nGreat news! Your return request has been approved.\n\nRefunded items: ${productNames}\nRefund amount: $${Number(refundAmount).toFixed(2)}\n\nThe refund has been processed and the items have been returned to stock.\n\nThank you for shopping with CS308 Store.`,
+      html: `
+        <h2>Refund Approved</h2>
+        <p>Dear <strong>${customerName}</strong>,</p>
+        <p>Great news! Your return request has been approved.</p>
+        <table>
+          <tr><td><strong>Refunded items:</strong></td><td>${productNames}</td></tr>
+          <tr><td><strong>Refund amount:</strong></td><td>$${Number(refundAmount).toFixed(2)}</td></tr>
+        </table>
+        <p>Thank you for shopping with CS308 Store.</p>
+      `,
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+    const previewUrl = nodemailer.getTestMessageUrl(info);
+    console.log(`Refund approval email sent to ${toEmail}`);
+    if (previewUrl) console.log("Preview URL: %s", previewUrl);
+    return true;
+  } catch (error) {
+    console.error("Refund email sending failed:", error);
+    return false;
+  }
+};
+
+const sendDiscountNotificationEmail = async (toEmail, customerName, productName, discountPercentage, campaignName) => {
+  try {
+    const transporter = await createTransporter();
+
+    const mailOptions = {
+      from: process.env.SMTP_FROM || '"CS308 Store" <noreply@cs308store.com>',
+      to: toEmail,
+      subject: `${discountPercentage}% Off on ${productName} - Just for You!`,
+      text: `Dear ${customerName},\n\nA product on your wishlist is now on sale!\n\n${productName} is now ${discountPercentage}% off as part of the "${campaignName}" campaign.\n\nDon't miss out!\n\nCS308 Store`,
+      html: `
+        <h2>Wishlist Item on Sale!</h2>
+        <p>Dear <strong>${customerName}</strong>,</p>
+        <p>A product on your wishlist is now on sale!</p>
+        <p><strong>${productName}</strong> is now <strong>${discountPercentage}% off</strong> as part of the <em>${campaignName}</em> campaign.</p>
+        <p>Don't miss out!</p>
+        <p>CS308 Store</p>
+      `,
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+    const previewUrl = nodemailer.getTestMessageUrl(info);
+    console.log(`Discount notification email sent to ${toEmail}`);
+    if (previewUrl) console.log("Preview URL: %s", previewUrl);
+    return true;
+  } catch (error) {
+    console.error("Discount notification email failed:", error);
+    return false;
+  }
+};
+
+module.exports = { sendInvoiceEmail, sendRefundApprovedEmail, sendDiscountNotificationEmail };

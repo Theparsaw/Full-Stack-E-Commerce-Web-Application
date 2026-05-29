@@ -35,6 +35,14 @@ const seedUsers = async () => {
         taxId: "PM-001",
         address: "Store HQ",
       },
+      {
+        name: "Support Agent",
+        email: "support@store.com",
+        password: "support123",
+        role: "support_agent",
+        taxId: "SA-001",
+        address: "Store HQ",
+      },
     ];
 
     // ── Loop through each user and create them if they don't exist ─────────────

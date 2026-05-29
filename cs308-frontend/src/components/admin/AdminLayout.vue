@@ -42,19 +42,21 @@ const route = useRoute()
 const userRole = computed(() => authStore.role)
 
 const panelKicker = computed(() => {
-  return userRole.value === 'sales_manager' ? 'Sales Panel' : 'Product Manager Panel'
+  if (userRole.value === 'sales_manager') return 'Sales Panel'
+  if (userRole.value === 'support_agent') return 'Support Panel'
+  return 'Admin Panel'
 })
 
 const panelTitle = computed(() => {
-  return userRole.value === 'sales_manager'
-    ? 'Sales Management'
-    : 'Store Management'
+  if (userRole.value === 'sales_manager') return 'Sales Management'
+  if (userRole.value === 'support_agent') return 'Live Chat Support'
+  return 'Store Management'
 })
 
 const panelDescription = computed(() => {
-  return userRole.value === 'sales_manager'
-    ? 'Manage pricing, invoices, and financial reports.'
-    : 'Manage products, categories, reviews, stock, and deliveries.'
+  if (userRole.value === 'sales_manager') return 'Manage pricing, invoices, and financial reports.'
+  if (userRole.value === 'support_agent') return 'Handle customer support conversations.'
+  return 'Manage products, categories, reviews, stock, and deliveries.'
 })
 
 const navItems = computed(() => {
@@ -64,6 +66,12 @@ const navItems = computed(() => {
       { label: 'Invoices', to: '/admin/invoices' },
       { label: 'Financial Report', to: '/admin/financial-report' },
       { label: 'Returns', to: '/admin/returns' },
+    ]
+  }
+
+  if (userRole.value === 'support_agent') {
+    return [
+      { label: 'Live Chat', to: '/admin/support' },
     ]
   }
 

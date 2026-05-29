@@ -135,12 +135,13 @@
           <div>
             <label class="mb-1 block font-medium text-gray-700">Category ID</label>
             <input
-              v-model="form.categoryId"
+              :value="form.categoryId"
               :disabled="Boolean(editingCategory)"
-              class="w-full rounded-2xl border border-gray-300 px-4 py-3 outline-none focus:border-orange-500 disabled:cursor-not-allowed disabled:bg-gray-100"
+              class="w-full rounded-2xl border border-gray-300 px-4 py-3 font-mono outline-none focus:border-orange-500 disabled:cursor-not-allowed disabled:bg-gray-100"
               placeholder="smartphones"
+              @input="onCategoryIdInput"
             />
-            <p class="mt-1 text-xs text-gray-500">Used internally by products. It cannot be changed after creation.</p>
+            <p class="mt-1 text-xs text-gray-500">Auto-generated from name as a slug. You can edit it manually. Cannot be changed after creation.</p>
           </div>
 
           <div>
@@ -222,7 +223,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import {
   createCategory,
   deleteCategory,
@@ -246,6 +247,28 @@ const form = reactive({
   name: '',
   description: '',
 })
+
+const categoryIdManuallyEdited = ref(false)
+
+const toSlug = (value) =>
+  String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+
+// Auto-generate slug from name when creating a new category
+watch(() => form.name, (name) => {
+  if (!editingCategory.value && !categoryIdManuallyEdited.value) {
+    form.categoryId = toSlug(name)
+  }
+})
+
+// Enforce slug format on manual Category ID edits
+const onCategoryIdInput = (e) => {
+  categoryIdManuallyEdited.value = true
+  form.categoryId = toSlug(e.target.value)
+}
 
 const loadCategories = async () => {
   loading.value = true
@@ -288,6 +311,7 @@ const resetForm = () => {
 
 const startCreate = () => {
   editingCategory.value = null
+  categoryIdManuallyEdited.value = false
   resetForm()
   showFormModal.value = true
 }
