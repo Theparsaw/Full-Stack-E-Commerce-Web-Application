@@ -13,12 +13,16 @@ const getActiveCampaignsForProductIds = async (productIds, now = new Date()) => 
     return [];
   }
 
+  // Sort so that when a product belongs to several overlapping campaigns,
+  // the one that STARTED first comes first (tie-break: created first).
+  // findCampaignForProduct picks the first match, so this is the campaign
+  // whose discount actually applies to the product.
   const query = DiscountCampaign.find({
     isActive: true,
     productIds: { $in: normalizedProductIds },
     startDate: { $lte: now },
     endDate: { $gte: now },
-  });
+  }).sort({ startDate: 1, createdAt: 1 });
 
   return typeof query.lean === "function" ? query.lean() : query;
 };
