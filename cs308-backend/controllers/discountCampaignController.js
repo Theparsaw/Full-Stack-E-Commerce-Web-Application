@@ -8,7 +8,44 @@ const User = require("../models/User");
 const { sendDiscountNotificationEmail } = require("../utils/emailSender");
 const { publishNotification } = require("../utils/notificationEvents");
 
+// Find active campaigns whose date range overlaps the given range and that
+// share at least one product. Used to warn the admin before allowing an
+// overlapping campaign to be created/updated. `excludeId` skips the campaign
+// being edited so it does not conflict with itself.
+const findOverlappingCampaigns = async (
+  productIds,
+  startDate,
+  endDate,
+  excludeId = null
+) => {
+  const query = {
+    isActive: true,
+    productIds: { $in: productIds },
+    startDate: { $lt: new Date(endDate) },
+    endDate: { $gt: new Date(startDate) },
+  };
 
+  if (excludeId) {
+    query._id = { $ne: excludeId };
+  }
+
+  const campaigns = await DiscountCampaign.find(query).sort({
+    startDate: 1,
+    createdAt: 1,
+  });
+
+  return campaigns.map((campaign) => ({
+    campaignId: String(campaign._id),
+    name: campaign.name,
+    discountPercentage: campaign.discountPercentage,
+    startDate: campaign.startDate,
+    endDate: campaign.endDate,
+    // Only the products shared with the campaign being saved are in conflict
+    overlappingProductIds: campaign.productIds.filter((id) =>
+      productIds.includes(id)
+    ),
+  }));
+};
 
 // CREATE CAMPAIGN
 const createCampaign = asyncHandler(async (req, res) => {
@@ -18,6 +55,7 @@ const createCampaign = asyncHandler(async (req, res) => {
     discountPercentage,
     startDate,
     endDate,
+    force,
   } = req.body;
 
   if (!productIds || productIds.length === 0) {
@@ -41,21 +79,24 @@ const createCampaign = asyncHandler(async (req, res) => {
     );
   }
 
-  // Check for conflicting active campaigns (date range overlap for same products)
-  const conflicting = await DiscountCampaign.findOne({
-    isActive: true,
-    productIds: { $in: productIds },
-    startDate: { $lt: new Date(endDate) },
-    endDate: { $gt: new Date(startDate) },
-  });
-
-  if (conflicting) {
-    const overlap = conflicting.productIds.filter((id) => productIds.includes(id));
-    throw new AppError(
-      `One or more products already have an active campaign in this date range: ${overlap.join(", ")} (campaign: "${conflicting.name}")`,
-      400,
-      "CAMPAIGN_CONFLICT"
+  // Warn (but do not block) when an active campaign overlaps this date range
+  // for one or more of the same products. The admin can confirm by resending
+  // with force=true. When campaigns overlap, the one that starts first applies.
+  if (!force) {
+    const overlaps = await findOverlappingCampaigns(
+      productIds,
+      startDate,
+      endDate
     );
+
+    if (overlaps.length > 0) {
+      throw new AppError(
+        "One or more products already have an overlapping active campaign in this date range. Confirm to create it anyway.",
+        409,
+        "CAMPAIGN_OVERLAP_WARNING",
+        { overlaps }
+      );
+    }
   }
 
   const campaign = await DiscountCampaign.create({
@@ -163,24 +204,27 @@ const updateCampaign = asyncHandler(async (req, res) => {
     discountPercentage,
     startDate,
     endDate,
+    force,
   } = req.body;
 
-  // Check for conflicts with OTHER active campaigns (exclude this one)
-  const conflictingOnUpdate = await DiscountCampaign.findOne({
-    _id: { $ne: campaign._id },
-    isActive: true,
-    productIds: { $in: productIds },
-    startDate: { $lt: new Date(endDate) },
-    endDate: { $gt: new Date(startDate) },
-  });
-
-  if (conflictingOnUpdate) {
-    const overlap = conflictingOnUpdate.productIds.filter((id) => productIds.includes(id));
-    throw new AppError(
-      `One or more products already have an active campaign in this date range: ${overlap.join(", ")} (campaign: "${conflictingOnUpdate.name}")`,
-      400,
-      "CAMPAIGN_CONFLICT"
+  // Warn (but do not block) when OTHER active campaigns overlap this date range
+  // for the same products. The admin can confirm by resending with force=true.
+  if (!force) {
+    const overlaps = await findOverlappingCampaigns(
+      productIds,
+      startDate,
+      endDate,
+      campaign._id
     );
+
+    if (overlaps.length > 0) {
+      throw new AppError(
+        "One or more products already have an overlapping active campaign in this date range. Confirm to update it anyway.",
+        409,
+        "CAMPAIGN_OVERLAP_WARNING",
+        { overlaps }
+      );
+    }
   }
 
   campaign.name = name;
