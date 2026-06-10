@@ -340,7 +340,7 @@ describe("Customer data ownership protection", () => {
       lean: jest.fn().mockResolvedValue([product]),
     });
 
-    DiscountCampaign.find.mockResolvedValue([]);
+    DiscountCampaign.find.mockReturnValue(createQuery([]));
 
     await addWishlistItem(req, res);
 

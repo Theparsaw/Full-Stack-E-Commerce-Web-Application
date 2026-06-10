@@ -223,6 +223,12 @@ const buildRatingStages = () => [
   },
 ];
 
+const buildPublicProductProjectionStage = () => ({
+  $project: {
+    costPrice: 0,
+  },
+});
+
 const buildSortStage = (sort, hasSearchScore = false) => {
   if (sort === "price_asc") return { $sort: { price: 1, createdAt: -1 } };
   if (sort === "price_desc") return { $sort: { price: -1, createdAt: -1 } };
@@ -270,6 +276,7 @@ const getAllProducts = asyncHandler(async (req, res) => {
       ...buildPopularityStages(),
       ...buildRatingStages(),
       buildSortStage(sort),
+      buildPublicProductProjectionStage(),
     ]);
 
     const productsWithDiscounts = await enrichProductsWithDiscounts(products);
@@ -293,6 +300,7 @@ const getAllProducts = asyncHandler(async (req, res) => {
       ...buildPopularityStages(),
       ...buildRatingStages(),
       buildSortStage(sort, true),
+      buildPublicProductProjectionStage(),
     ]);
 
     const fallbackFilter = buildRegexFallbackFilter(search);
@@ -301,6 +309,7 @@ const getAllProducts = asyncHandler(async (req, res) => {
       ...buildPopularityStages(),
       ...buildRatingStages(),
       buildSortStage(sort),
+      buildPublicProductProjectionStage(),
     ]);
     const combinedResults = mergeProductsById(fallbackResults, atlasResults);
 
@@ -321,6 +330,7 @@ const getAllProducts = asyncHandler(async (req, res) => {
       ...buildPopularityStages(),
       ...buildRatingStages(),
       buildSortStage(sort),
+      buildPublicProductProjectionStage(),
     ]);
     const productsWithDiscounts = await enrichProductsWithDiscounts(products);
 
@@ -333,6 +343,7 @@ const getProductById = asyncHandler(async (req, res) => {
     { $match: { productId: req.params.id } },
     ...buildPopularityStages(),
     ...buildRatingStages(),
+    buildPublicProductProjectionStage(),
   ]);
 
   if (!product) {
@@ -352,6 +363,15 @@ const getProductById = asyncHandler(async (req, res) => {
   });
 });
 
+const getProductsForPricing = asyncHandler(async (_req, res) => {
+  const products = await Product.find({})
+    .select("productId categoryId name model price costPrice")
+    .sort({ name: 1, model: 1 })
+    .lean();
+
+  return res.status(200).json(products);
+});
+
 const createProduct = asyncHandler(async (req, res) => {
   const {
     productId,
@@ -361,7 +381,6 @@ const createProduct = asyncHandler(async (req, res) => {
     serialNumber,
     description,
     quantityInStock,
-    price,
     warrantyStatus,
     distributorInfo,
     imageUrl,
@@ -398,7 +417,7 @@ const createProduct = asyncHandler(async (req, res) => {
     serialNumber,
     description,
     quantityInStock,
-    price,
+    price: 0,
     warrantyStatus,
     distributorInfo,
     imageUrl: productImageUrl,
@@ -418,7 +437,6 @@ const updateProduct = asyncHandler(async (req, res) => {
     serialNumber,
     description,
     quantityInStock,
-    price,
     warrantyStatus,
     distributorInfo,
     imageUrl,
@@ -447,7 +465,6 @@ const updateProduct = asyncHandler(async (req, res) => {
   product.serialNumber = serialNumber ?? product.serialNumber;
   product.description = description ?? product.description;
   product.quantityInStock = quantityInStock ?? product.quantityInStock;
-  product.price = price ?? product.price;
   product.warrantyStatus = warrantyStatus ?? product.warrantyStatus;
   product.distributorInfo = distributorInfo ?? product.distributorInfo;
 
@@ -467,7 +484,7 @@ const updateProduct = asyncHandler(async (req, res) => {
   });
 });
 const updateProductPrice = asyncHandler(async (req, res) => {
-  const allowedFields = ["price"];
+  const allowedFields = ["price", "costPrice"];
   const receivedFields = Object.keys(req.body);
 
   const hasInvalidField = receivedFields.some(
@@ -476,23 +493,31 @@ const updateProductPrice = asyncHandler(async (req, res) => {
 
   if (hasInvalidField) {
     throw new AppError(
-      "Only price can be updated from this endpoint",
+      "Only selling price and cost price can be updated from this endpoint",
       400,
       "PRICE_ONLY_ENDPOINT"
     );
   }
 
-  const { price } = req.body;
+  const { price, costPrice } = req.body;
 
-  if (price === undefined || price === null || price === "") {
-    throw new AppError("Price is required", 400, "PRICE_REQUIRED");
+  if (
+    (price === undefined || price === null || price === "") &&
+    (costPrice === undefined || costPrice === null || costPrice === "")
+  ) {
+    throw new AppError("Selling price or cost price is required", 400, "PRICE_REQUIRED");
   }
 
-  const numericPrice = Number(price);
+  const numericPrice = price === undefined || price === null || price === "" ? null : Number(price);
+  const numericCostPrice =
+    costPrice === undefined || costPrice === null || costPrice === "" ? null : Number(costPrice);
 
-  if (Number.isNaN(numericPrice) || numericPrice < 0) {
+  if (
+    (numericPrice !== null && (Number.isNaN(numericPrice) || numericPrice < 0)) ||
+    (numericCostPrice !== null && (Number.isNaN(numericCostPrice) || numericCostPrice < 0))
+  ) {
     throw new AppError(
-      "Price must be a non-negative number",
+      "Selling price and cost price must be non-negative numbers",
       400,
       "INVALID_PRICE"
     );
@@ -504,12 +529,13 @@ const updateProductPrice = asyncHandler(async (req, res) => {
     throw new AppError("Product not found", 404, "PRODUCT_NOT_FOUND");
   }
 
-  product.price = numericPrice;
+  if (numericPrice !== null) product.price = numericPrice;
+  if (numericCostPrice !== null) product.costPrice = numericCostPrice;
 
   const updatedProduct = await product.save();
 
   res.status(200).json({
-    message: "Product price updated successfully",
+    message: "Product pricing updated successfully",
     product: updatedProduct,
   });
 });
@@ -532,6 +558,7 @@ module.exports = {
   createProduct,
   getAllProducts,
   getProductById,
+  getProductsForPricing,
   updateProduct,
   updateProductPrice,
   deleteProduct,

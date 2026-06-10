@@ -52,6 +52,13 @@ const productSchema = new mongoose.Schema(
       min: 0,
     },
 
+    costPrice: {
+      type: Number,
+      required: true,
+      default: 0,
+      min: 0,
+    },
+
     warrantyStatus: {
       type: String,
       required: true,

@@ -10,7 +10,7 @@
       </h1>
 
       <p class="text-gray-600 mt-2">
-        Update product prices from the admin panel.
+        Set selling prices and product costs used for accurate profit/loss reporting.
       </p>
     </div>
 
@@ -53,11 +53,15 @@
             </th>
 
             <th class="text-left px-6 py-4 font-semibold text-gray-700">
-              Current Price
+              Selling Price
             </th>
 
             <th class="text-left px-6 py-4 font-semibold text-gray-700">
-              New Price
+              Cost Price
+            </th>
+
+            <th class="text-left px-6 py-4 font-semibold text-gray-700">
+              New Pricing
             </th>
 
             <th class="text-left px-6 py-4 font-semibold text-gray-700">
@@ -90,15 +94,30 @@
             </td>
 
             <td class="px-6 py-4">
+              ${{ Number(product.costPrice || 0).toFixed(2) }}
+            </td>
+
+            <td class="px-6 py-4">
+              <div class="flex flex-wrap gap-2">
               <input
                 v-model="priceInputs[product.productId]"
                 type="number"
                 min="0"
                 step="0.01"
-                placeholder="Enter new price"
+                placeholder="Selling price"
                 class="w-32 rounded-xl border border-gray-300 px-3 py-2 text-sm outline-none focus:border-orange-500"
                 :class="errors[product.productId] ? 'border-red-400' : ''"
               />
+              <input
+                v-model="costPriceInputs[product.productId]"
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="Cost price"
+                class="w-32 rounded-xl border border-gray-300 px-3 py-2 text-sm outline-none focus:border-orange-500"
+                :class="errors[product.productId] ? 'border-red-400' : ''"
+              />
+              </div>
 
               <p
                 v-if="errors[product.productId]"
@@ -655,10 +674,11 @@ import {
   nextTick,
   watch
 } from 'vue'
+import { formatDisplayDate } from '../../utils/dateFormat'
 
 import {
-  getProducts,
-  updateProductPrice
+  getProductsForPricing,
+  updateProductPricing
 } from '../../api/productApi'
 
 import {
@@ -690,6 +710,7 @@ const campaignSuccess = ref('')
 const campaignError = ref('')
 
 const priceInputs = reactive({})
+const costPriceInputs = reactive({})
 const saving = reactive({})
 const success = reactive({})
 const errors = reactive({})
@@ -831,7 +852,7 @@ const loadProducts = async () => {
 
   try {
 
-    const res = await getProducts()
+    const res = await getProductsForPricing()
 
     products.value =
       (res.data || []).sort((a, b) =>
@@ -871,23 +892,28 @@ const loadCampaigns = async () => {
 
 const updatePrice = async (product) => {
 
-  const raw = priceInputs[product.productId]
+  const rawPrice = priceInputs[product.productId]
+  const rawCostPrice = costPriceInputs[product.productId]
 
   errors[product.productId] = ''
 
-  if (raw === undefined || raw === '') {
+  if ((rawPrice === undefined || rawPrice === '') && (rawCostPrice === undefined || rawCostPrice === '')) {
     errors[product.productId] =
-      'Please enter a price'
+      'Enter a selling price or cost price'
 
     return
   }
 
-  const newPrice = parseFloat(raw)
+  const newPrice = rawPrice === undefined || rawPrice === '' ? null : parseFloat(rawPrice)
+  const newCostPrice = rawCostPrice === undefined || rawCostPrice === '' ? null : parseFloat(rawCostPrice)
 
-  if (isNaN(newPrice) || newPrice < 0) {
+  if (
+    (newPrice !== null && (isNaN(newPrice) || newPrice < 0)) ||
+    (newCostPrice !== null && (isNaN(newCostPrice) || newCostPrice < 0))
+  ) {
 
     errors[product.productId] =
-      'Price must be positive'
+      'Prices must be non-negative'
 
     return
   }
@@ -897,11 +923,16 @@ const updatePrice = async (product) => {
 
   try {
 
-    await updateProductPrice(product.productId, newPrice)
+    await updateProductPricing(product.productId, {
+      ...(newPrice !== null ? { price: newPrice } : {}),
+      ...(newCostPrice !== null ? { costPrice: newCostPrice } : {}),
+    })
 
-    product.price = newPrice
+    if (newPrice !== null) product.price = newPrice
+    if (newCostPrice !== null) product.costPrice = newCostPrice
 
     priceInputs[product.productId] = ''
+    costPriceInputs[product.productId] = ''
 
     success[product.productId] = true
 
@@ -1077,7 +1108,7 @@ const handleDeactivateCampaign = async (id) => {
 }
 
 const formatCampaignDate = (date) => {
-  return new Date(date).toLocaleDateString()
+  return formatDisplayDate(date)
 }
 
 const handleReactivateCampaign = async (id) => {

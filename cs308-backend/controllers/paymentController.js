@@ -331,10 +331,9 @@ const processPayment = async (req, res) => {
     // INVOICE GENERATION 
     // ==========================================
     try {
-      const user = await User.findById(order.userId);
       const invoiceNum = `INV-${order._id.toString().slice(-6).toUpperCase()}`;
-      const pdfBuffer = await generateInvoicePDF(order, user);
-      const emailSent = await sendInvoiceEmail(user.email, invoiceNum, pdfBuffer);
+      const pdfBuffer = await generateInvoicePDF(order, payingUser);
+      const emailSent = await sendInvoiceEmail(payingUser.email, invoiceNum, pdfBuffer);
       
       await Invoice.create({
         orderId: order._id.toString(),

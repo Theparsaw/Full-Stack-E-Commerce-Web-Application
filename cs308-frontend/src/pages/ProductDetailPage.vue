@@ -280,6 +280,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { addGuestItemToCart, addItemToCart } from '../api/cartApi'
 import { getProductById } from '../api/productApi'
 import { createReview, getApprovedReviewsByProductId, updateReview } from '../api/reviewApi'
+import { formatDisplayDate } from '../utils/dateFormat'
 import { authStore } from '../store/auth'
 import { cartStore } from '../store/cart'
 import WishlistButton from '../components/WishlistButton.vue'
@@ -472,13 +473,7 @@ const formatAverageRating = (productValue) => {
 }
 
 const formatReviewDate = (dateValue) => {
-  if (!dateValue) return 'Unknown date'
-
-  return new Date(dateValue).toLocaleDateString(undefined, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  })
+  return formatDisplayDate(dateValue)
 }
 
 const loadReviews = async () => {

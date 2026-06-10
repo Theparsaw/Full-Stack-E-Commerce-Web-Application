@@ -93,7 +93,7 @@
               <span :class="req.status === 'approved' ? 'text-green-600 bg-green-100' : 'text-red-600 bg-red-100'" class="px-2 py-1 text-xs font-bold rounded uppercase">
                 {{ req.status }}
               </span>
-              <p v-if="req.resolvedAt" class="text-xs text-gray-500 mt-2">On: {{ new Date(req.resolvedAt).toLocaleDateString() }}</p>
+              <p v-if="req.resolvedAt" class="text-xs text-gray-500 mt-2">On: {{ formatDisplayDate(req.resolvedAt) }}</p>
               <p v-if="req.reviewedBy" class="text-xs text-gray-600 mt-1">
                 <span class="font-bold">Reviewed by:</span> {{ formatReviewer(req.reviewedBy) }}
               </p>
@@ -150,6 +150,7 @@
 import { ref, onMounted, watch } from 'vue'
 import { getPendingReturnRequests, getReturnHistory, approveReturnRequest, rejectReturnRequest } from '../../api/returnApi'
 import { resolveAssetUrl } from '../../api/authApi'
+import { formatDisplayDate } from '../../utils/dateFormat'
 
 const currentTab = ref('pending')
 const requests = ref([])

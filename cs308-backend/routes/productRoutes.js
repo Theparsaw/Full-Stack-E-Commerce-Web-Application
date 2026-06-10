@@ -5,6 +5,7 @@ const {
   createProduct,
   getAllProducts,
   getProductById,
+  getProductsForPricing,
   updateProduct,
   updateProductPrice,
   deleteProduct,
@@ -17,6 +18,10 @@ router
   .route("/")
   .get(getAllProducts)
   .post(authMiddleware, authorize("product_manager"), uploadProductImage.single("productImage"), createProduct);
+
+router
+  .route("/pricing/manage")
+  .get(authMiddleware, authorize("sales_manager"), getProductsForPricing);
 
 router
   .route("/:id/price")

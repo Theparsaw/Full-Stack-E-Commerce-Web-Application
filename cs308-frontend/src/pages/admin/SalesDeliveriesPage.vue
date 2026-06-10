@@ -272,6 +272,64 @@
     >
       {{ successMessage }}
     </p>
+
+    <section class="mt-10 rounded-3xl border border-amber-300 bg-amber-50 p-6">
+      <p class="text-sm font-semibold uppercase tracking-wide text-amber-700">Demo Preparation Tool</p>
+      <h2 class="mt-2 text-2xl font-bold text-gray-900">Change Order Purchase Date</h2>
+      <p class="mt-2 max-w-3xl text-sm text-gray-600">
+        Select a paid order and set its demo purchase date. The linked order, delivery, payment, and invoice
+        dates are updated together so return eligibility and date-range reports remain consistent.
+      </p>
+
+      <div class="mt-5 grid gap-4 lg:grid-cols-[1fr_0.7fr_auto] lg:items-end">
+        <div>
+          <label class="mb-2 block text-sm font-semibold text-gray-700" for="demoDelivery">
+            Delivery / Order
+          </label>
+          <select
+            id="demoDelivery"
+            v-model="demoDateForm.deliveryId"
+            class="w-full rounded-xl border border-gray-300 bg-white px-3 py-3 text-sm outline-none focus:border-orange-500"
+          >
+            <option value="">Select an order</option>
+            <option v-for="delivery in deliveries" :key="delivery.id" :value="delivery.id">
+              {{ delivery.items?.map((item) => item.name).join(', ') || 'Unknown product' }}
+              | {{ delivery.customerEmail || delivery.userId }}
+              | Order {{ delivery.orderId }}
+            </option>
+          </select>
+        </div>
+
+        <div>
+          <label class="mb-2 block text-sm font-semibold text-gray-700" for="demoOrderDate">
+            Purchase date and time
+          </label>
+          <input
+            id="demoOrderDate"
+            v-model="demoDateForm.orderDate"
+            type="datetime-local"
+            :max="maxDemoDate"
+            class="w-full rounded-xl border border-gray-300 bg-white px-3 py-3 text-sm outline-none focus:border-orange-500"
+          />
+        </div>
+
+        <button
+          type="button"
+          class="rounded-xl bg-amber-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-50"
+          :disabled="savingDemoDate || !demoDateForm.deliveryId || !demoDateForm.orderDate"
+          @click="handleUpdateOrderDate"
+        >
+          {{ savingDemoDate ? 'Updating...' : 'Update Demo Date' }}
+        </button>
+      </div>
+
+      <p v-if="demoDateError" class="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        {{ demoDateError }}
+      </p>
+      <p v-if="demoDateMessage" class="mt-4 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+        {{ demoDateMessage }}
+      </p>
+    </section>
   </div>
 </template>
 
@@ -280,8 +338,10 @@ import { ref, computed, onMounted } from 'vue'
 import {
   getDeliveries,
   updateDeliveryStatus,
+  updateDeliveryOrderDate,
   downloadDeliveryInvoice,
 } from '../../api/deliveryApi'
+import { formatDisplayDateTime } from '../../utils/dateFormat'
 
 const deliveries = ref([])
 const loading = ref(true)
@@ -292,6 +352,18 @@ const statusFilter = ref('all')
 const selectedStatuses = ref({})
 const savingIds = ref(new Set())
 const downloadingInvoiceIds = ref(new Set())
+const savingDemoDate = ref(false)
+const demoDateError = ref('')
+const demoDateMessage = ref('')
+const demoDateForm = ref({
+  deliveryId: '',
+  orderDate: '',
+})
+const getLocalDateTimeValue = (date = new Date()) => {
+  const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60 * 1000)
+  return localDate.toISOString().slice(0, 16)
+}
+const maxDemoDate = getLocalDateTimeValue()
 
 const allowedStatuses = [
   'processing',
@@ -354,8 +426,7 @@ const filteredDeliveries = computed(() => {
 })
 
 const formatDate = (value) => {
-  if (!value) return 'Unknown date'
-  return new Date(value).toLocaleString()
+  return formatDisplayDateTime(value)
 }
 
 const formatCurrency = (value) => {
@@ -513,6 +584,34 @@ const handleUpdateStatus = async (delivery) => {
   } finally {
     savingIds.value.delete(delivery.id)
     savingIds.value = new Set(savingIds.value)
+  }
+}
+
+const handleUpdateOrderDate = async () => {
+  demoDateError.value = ''
+  demoDateMessage.value = ''
+  savingDemoDate.value = true
+
+  try {
+    const selectedDate = new Date(demoDateForm.value.orderDate)
+    const res = await updateDeliveryOrderDate(
+      demoDateForm.value.deliveryId,
+      selectedDate.toISOString()
+    )
+
+    const updatedDeliveryId = res.data?.data?.deliveryId
+    deliveries.value = deliveries.value.map((delivery) =>
+      String(delivery.id) === String(updatedDeliveryId)
+        ? { ...delivery, createdAt: res.data.data.orderDate }
+        : delivery
+    )
+
+    demoDateMessage.value = res.data?.message || 'Order date updated successfully.'
+  } catch (err) {
+    demoDateError.value = err?.response?.data?.message || 'Failed to update order date'
+    console.error(err)
+  } finally {
+    savingDemoDate.value = false
   }
 }
 

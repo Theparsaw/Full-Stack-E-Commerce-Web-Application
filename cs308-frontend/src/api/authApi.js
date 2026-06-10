@@ -37,4 +37,13 @@ export const updateProfile = (data) => {
   })
 }
 
+export const changePassword = (data) => {
+  const token = authStore.token || localStorage.getItem('token')
+  return api.put('/auth/me/password', data, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    }
+  })
+}
+
 export default api

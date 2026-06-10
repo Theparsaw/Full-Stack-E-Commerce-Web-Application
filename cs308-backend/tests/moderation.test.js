@@ -3,6 +3,7 @@ const mongoose = require("mongoose");
 const app = require("../server");
 const Review = require("../models/Review");
 const ModerationLog = require("../models/ModerationLog");
+const Notification = require("../models/Notification");
 const User = require("../models/User");
 
 const createEmail = (label) => `mod-${label}-${Date.now()}@example.com`;
@@ -47,6 +48,7 @@ afterAll(async () => {
     await ModerationLog.deleteMany({ reviewId: String(testReviewId) });
   }
   await Review.deleteMany({ userId: { $in: createdUserIds } });
+  await Notification.deleteMany({ userId: { $in: createdUserIds } });
   await User.deleteMany({ email: /mod-.*@example\.com$/ });
   await mongoose.connection.close();
 });
@@ -92,6 +94,14 @@ describe("Moderation API", () => {
       .set("Authorization", `Bearer ${productManagerToken}`);
     expect(res.statusCode).toBe(200);
     expect(res.body.success).toBe(true);
+
+    const notification = await Notification.findOne({
+      userId: testUserId,
+      type: "review_approved",
+      referenceId: String(testReviewId),
+    });
+    expect(notification).toBeDefined();
+    expect(notification.isRead).toBe(false);
   });
 
   test("PATCH /api/moderation/reviews/:id/reject requires auth", async () => {
@@ -125,6 +135,14 @@ describe("Moderation API", () => {
       .set("Authorization", `Bearer ${productManagerToken}`);
     expect(res.statusCode).toBe(200);
     expect(res.body.success).toBe(true);
+
+    const notification = await Notification.findOne({
+      userId: testUserId,
+      type: "review_rejected",
+      referenceId: String(review._id),
+    });
+    expect(notification).toBeDefined();
+    expect(notification.isRead).toBe(false);
 
     await Review.findByIdAndDelete(review._id);
     await ModerationLog.deleteMany({ reviewId: String(review._id) });

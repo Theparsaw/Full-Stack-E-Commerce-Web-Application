@@ -300,16 +300,18 @@ const props = defineProps({
     type: Object,
     default: () => ({
       revenue: true,
-      estimatedProfit: true,
-      discountLoss: true,
+      costOfGoods: true,
+      profitLoss: true,
+      refunds: true,
     }),
   },
 })
 
 const SERIES = [
   { key: 'revenue', label: 'Revenue', color: '#10b981' },
-  { key: 'estimatedProfit', label: 'Profit / Loss', color: '#f97316' },
-  { key: 'discountLoss', label: 'Discount Loss', color: '#ef4444' },
+  { key: 'costOfGoods', label: 'Cost of Goods', color: '#f59e0b' },
+  { key: 'profitLoss', label: 'Profit / Loss', color: '#f97316' },
+  { key: 'refunds', label: 'Refunds', color: '#ef4444' },
 ]
 
 const chartShell = ref(null)

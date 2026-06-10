@@ -101,6 +101,83 @@
             </div>
 
             <div class="flex flex-col gap-1">
+              <span class="text-sm font-medium uppercase tracking-wide text-gray-400">Password</span>
+              <span class="font-mono font-medium tracking-widest text-gray-800">••••••••</span>
+              <button
+                type="button"
+                class="mt-2 w-fit rounded-xl border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
+                @click="togglePasswordForm"
+              >
+                {{ showPasswordForm ? 'Cancel Password Change' : 'Change Password' }}
+              </button>
+            </div>
+
+            <form
+              v-if="showPasswordForm"
+              class="space-y-4 rounded-2xl border border-gray-100 bg-gray-50 p-5"
+              @submit.prevent="submitPasswordChange"
+            >
+              <div
+                v-if="passwordMessage"
+                class="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700"
+              >
+                {{ passwordMessage }}
+              </div>
+              <div
+                v-if="passwordError"
+                class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+              >
+                {{ passwordError }}
+              </div>
+
+              <div class="flex flex-col gap-2">
+                <label class="text-sm font-medium text-gray-700" for="currentPassword">Current Password</label>
+                <input
+                  id="currentPassword"
+                  v-model="passwordForm.currentPassword"
+                  type="password"
+                  autocomplete="current-password"
+                  required
+                  class="rounded-xl border border-gray-200 bg-white px-4 py-3 text-gray-800 outline-none transition focus:border-orange-400 focus:ring-2 focus:ring-orange-100"
+                />
+              </div>
+
+              <div class="flex flex-col gap-2">
+                <label class="text-sm font-medium text-gray-700" for="newPassword">New Password</label>
+                <input
+                  id="newPassword"
+                  v-model="passwordForm.newPassword"
+                  type="password"
+                  autocomplete="new-password"
+                  minlength="6"
+                  required
+                  class="rounded-xl border border-gray-200 bg-white px-4 py-3 text-gray-800 outline-none transition focus:border-orange-400 focus:ring-2 focus:ring-orange-100"
+                />
+              </div>
+
+              <div class="flex flex-col gap-2">
+                <label class="text-sm font-medium text-gray-700" for="confirmNewPassword">Confirm New Password</label>
+                <input
+                  id="confirmNewPassword"
+                  v-model="passwordForm.confirmNewPassword"
+                  type="password"
+                  autocomplete="new-password"
+                  minlength="6"
+                  required
+                  class="rounded-xl border border-gray-200 bg-white px-4 py-3 text-gray-800 outline-none transition focus:border-orange-400 focus:ring-2 focus:ring-orange-100"
+                />
+              </div>
+
+              <button
+                type="submit"
+                class="rounded-xl bg-orange-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:bg-orange-300"
+                :disabled="changingPassword"
+              >
+                {{ changingPassword ? 'Changing Password...' : 'Save New Password' }}
+              </button>
+            </form>
+
+            <div class="flex flex-col gap-1">
               <span class="text-sm font-medium uppercase tracking-wide text-gray-400">Tax ID</span>
               <span class="font-medium text-gray-800">{{ user.taxId || 'Not provided' }}</span>
             </div>
@@ -877,12 +954,13 @@
 <script setup>
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { getProfile, resolveAssetUrl, updateProfile } from '../api/authApi'
+import { changePassword, getProfile, resolveAssetUrl, updateProfile } from '../api/authApi'
 import { downloadInvoice, getMyInvoices } from '../api/invoiceApi'
 import { cancelOrder, getMyOrders } from '../api/orderApi'
 import { getMyReturnRequests, submitReturnRequest } from '../api/returnApi'
 import { authStore } from '../store/auth'
 import { wishlistStore } from '../store/wishlist'
+import { formatDisplayDate, formatDisplayDateTime } from '../utils/dateFormat'
 import {
   canRequestReturn as canRequestReturnForItem,
   createEmptyReturnForm,
@@ -907,6 +985,10 @@ const isEditing = ref(false)
 const saving = ref(false)
 const formError = ref('')
 const formMessage = ref('')
+const showPasswordForm = ref(false)
+const changingPassword = ref(false)
+const passwordError = ref('')
+const passwordMessage = ref('')
 const photoError = ref('')
 const orders = ref([])
 const ordersLoading = ref(false)
@@ -940,6 +1022,12 @@ const form = ref({
   taxId: '',
   address: '',
   profileImage: '',
+})
+
+const passwordForm = ref({
+  currentPassword: '',
+  newPassword: '',
+  confirmNewPassword: '',
 })
 
 const returnForm = ref(createEmptyReturnForm())
@@ -982,6 +1070,51 @@ const displayProfileImage = computed(() => {
 })
 
 const getProfileImageUrl = (value) => resolveAssetUrl(value)
+
+const resetPasswordForm = () => {
+  passwordForm.value = {
+    currentPassword: '',
+    newPassword: '',
+    confirmNewPassword: '',
+  }
+  passwordError.value = ''
+}
+
+const togglePasswordForm = () => {
+  passwordMessage.value = ''
+  resetPasswordForm()
+  showPasswordForm.value = !showPasswordForm.value
+}
+
+const submitPasswordChange = async () => {
+  passwordError.value = ''
+  passwordMessage.value = ''
+
+  if (passwordForm.value.newPassword !== passwordForm.value.confirmNewPassword) {
+    passwordError.value = 'New passwords do not match.'
+    return
+  }
+
+  if (passwordForm.value.newPassword.length < 6) {
+    passwordError.value = 'New password must be at least 6 characters.'
+    return
+  }
+
+  changingPassword.value = true
+
+  try {
+    const res = await changePassword({
+      currentPassword: passwordForm.value.currentPassword,
+      newPassword: passwordForm.value.newPassword,
+    })
+    resetPasswordForm()
+    passwordMessage.value = res.data.message || 'Password changed successfully.'
+  } catch (err) {
+    passwordError.value = err?.response?.data?.message || 'Failed to change password. Please try again.'
+  } finally {
+    changingPassword.value = false
+  }
+}
 
 const setActiveTab = (tabId) => {
   const nextQuery = { ...route.query }
@@ -1088,23 +1221,11 @@ const formatRole = (role) => {
 }
 
 const formatDate = (dateStr) => {
-  if (!dateStr) return 'Unknown'
-  return new Date(dateStr).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  })
+  return formatDisplayDate(dateStr, 'Unknown')
 }
 
 const formatDateTime = (dateStr) => {
-  if (!dateStr) return 'Unknown'
-  return new Date(dateStr).toLocaleString('en-US', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  })
+  return formatDisplayDateTime(dateStr, 'Unknown')
 }
 
 const formatPaymentStatus = (status) => {

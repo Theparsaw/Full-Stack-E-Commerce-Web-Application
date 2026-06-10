@@ -8,28 +8,47 @@ const notificationSchema = new mongoose.Schema(
       index: true,
     },
 
+    type: {
+      type: String,
+      enum: ["discount", "refund_approved", "refund_rejected", "review_approved", "review_rejected"],
+      default: "discount",
+      index: true,
+    },
+
+    title: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+
+    referenceId: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+
     productId: {
       type: String,
-      required: true,
       trim: true,
+      default: "",
     },
 
     campaignId: {
       type: String,
-      required: true,
       trim: true,
+      default: "",
     },
 
     productName: {
       type: String,
-      required: true,
       trim: true,
+      default: "",
     },
 
     discountPercentage: {
       type: Number,
-      required: true,
-      min: 1,
+      min: 0,
+      default: 0,
     },
 
     message: {

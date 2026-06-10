@@ -1,5 +1,3 @@
-const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-
 const padNumber = (value) => String(value).padStart(2, '0')
 
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max)
@@ -52,25 +50,15 @@ const getStartOfUtcMonth = (date) => new Date(Date.UTC(date.getUTCFullYear(), da
 
 const getEndOfUtcMonth = (date) => new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0))
 
-const formatShortDate = (date) => `${MONTH_NAMES[date.getUTCMonth()]} ${date.getUTCDate()}`
-
-const formatLongDate = (date) =>
-  `${MONTH_NAMES[date.getUTCMonth()]} ${date.getUTCDate()}, ${date.getUTCFullYear()}`
+const formatUtcDisplayDate = (date) =>
+  `${padNumber(date.getUTCDate())}.${padNumber(date.getUTCMonth() + 1)}.${date.getUTCFullYear()}`
 
 const formatDateRange = (startDate, endDate) => {
   if (toUtcDateInput(startDate) === toUtcDateInput(endDate)) {
-    return formatLongDate(startDate)
+    return formatUtcDisplayDate(startDate)
   }
 
-  if (startDate.getUTCFullYear() !== endDate.getUTCFullYear()) {
-    return `${formatLongDate(startDate)} - ${formatLongDate(endDate)}`
-  }
-
-  if (startDate.getUTCMonth() !== endDate.getUTCMonth()) {
-    return `${formatShortDate(startDate)} - ${formatShortDate(endDate)}`
-  }
-
-  return `${MONTH_NAMES[startDate.getUTCMonth()]} ${startDate.getUTCDate()} - ${endDate.getUTCDate()}, ${startDate.getUTCFullYear()}`
+  return `${formatUtcDisplayDate(startDate)} - ${formatUtcDisplayDate(endDate)}`
 }
 
 const getBucketKey = (date, granularity) => {
@@ -85,11 +73,13 @@ const createDayBuckets = (startDate, endDate) => {
   for (let cursor = startDate; cursor <= endDate; cursor = addUtcDays(cursor, 1)) {
     buckets.push({
       key: toUtcDateInput(cursor),
-      label: formatShortDate(cursor),
-      rangeLabel: formatLongDate(cursor),
+      label: formatUtcDisplayDate(cursor),
+      rangeLabel: formatUtcDisplayDate(cursor),
       revenue: 0,
+      refunds: 0,
+      costOfGoods: 0,
+      profitLoss: 0,
       discountLoss: 0,
-      estimatedProfit: 0,
       orders: 0,
       itemsSold: 0,
     })
@@ -110,10 +100,12 @@ const createWeekBuckets = (startDate, endDate) => {
     buckets.push({
       key: toUtcDateInput(periodStart),
       label: formatDateRange(visibleStart, visibleEnd),
-      rangeLabel: `Week of ${formatLongDate(visibleStart)}`,
+      rangeLabel: `Week of ${formatUtcDisplayDate(visibleStart)}`,
       revenue: 0,
+      refunds: 0,
+      costOfGoods: 0,
+      profitLoss: 0,
       discountLoss: 0,
-      estimatedProfit: 0,
       orders: 0,
       itemsSold: 0,
     })
@@ -130,7 +122,7 @@ const createMonthBuckets = (startDate, endDate) => {
     const periodEnd = getEndOfUtcMonth(cursor)
     const visibleStart = startDate > periodStart ? startDate : periodStart
     const visibleEnd = endDate < periodEnd ? endDate : periodEnd
-    const fullMonthLabel = `${MONTH_NAMES[cursor.getUTCMonth()]} ${cursor.getUTCFullYear()}`
+    const fullMonthLabel = formatDateRange(periodStart, periodEnd)
 
     buckets.push({
       key: toUtcDateInput(periodStart),
@@ -141,8 +133,10 @@ const createMonthBuckets = (startDate, endDate) => {
           ? fullMonthLabel
           : `${fullMonthLabel} (${formatDateRange(visibleStart, visibleEnd)})`,
       revenue: 0,
+      refunds: 0,
+      costOfGoods: 0,
+      profitLoss: 0,
       discountLoss: 0,
-      estimatedProfit: 0,
       orders: 0,
       itemsSold: 0,
     })
@@ -180,8 +174,10 @@ export const buildFinancialChartPoints = (
     if (!bucket) return
 
     bucket.revenue += Number(point?.revenue || 0)
+    bucket.refunds += Number(point?.refunds || 0)
+    bucket.costOfGoods += Number(point?.costOfGoods || 0)
+    bucket.profitLoss += Number(point?.profitLoss || 0)
     bucket.discountLoss += Number(point?.discountLoss || 0)
-    bucket.estimatedProfit += Number(point?.estimatedProfit || 0)
     bucket.orders += Number(point?.orders || 0)
     bucket.itemsSold += Number(point?.itemsSold || 0)
   })
@@ -189,8 +185,10 @@ export const buildFinancialChartPoints = (
   return buckets.map((bucket) => ({
     ...bucket,
     revenue: roundMoney(bucket.revenue),
+    refunds: roundMoney(bucket.refunds),
+    costOfGoods: roundMoney(bucket.costOfGoods),
+    profitLoss: roundMoney(bucket.profitLoss),
     discountLoss: roundMoney(bucket.discountLoss),
-    estimatedProfit: roundMoney(bucket.estimatedProfit),
   }))
 }
 

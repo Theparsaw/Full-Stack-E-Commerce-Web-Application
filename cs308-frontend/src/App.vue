@@ -208,7 +208,10 @@
                           </p>
 
                           <div class="mt-2 flex flex-wrap items-center gap-2 text-xs text-gray-500">
-                            <span class="rounded-full bg-white px-2 py-1 font-medium text-orange-600 ring-1 ring-orange-100">
+                            <span
+                              v-if="isDiscountNotification(notification)"
+                              class="rounded-full bg-white px-2 py-1 font-medium text-orange-600 ring-1 ring-orange-100"
+                            >
                               -{{ notification.discountPercentage }}%
                             </span>
                             <span>{{ formatNotificationTimestamp(notification.createdAt) }}</span>
@@ -416,6 +419,7 @@ import { authStore } from './store/auth'
 import { cartStore } from './store/cart'
 import { wishlistStore } from './store/wishlist'
 import { notificationStore } from './store/notificationStore'
+import { formatDisplayDateTime } from './utils/dateFormat'
 
 const router = useRouter()
 const route = useRoute()
@@ -529,8 +533,6 @@ const notificationPreviewSummary = computed(() => {
 
   return 'You are all caught up'
 })
-const relativeTimeFormatter = new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' })
-
 const setSort = (value) => {
   const query = { ...route.query }
   if (value) {
@@ -542,7 +544,8 @@ const setSort = (value) => {
 }
 
 const getProfileImageUrl = (value) => resolveAssetUrl(value)
-const getNotificationTitle = (notification) => notification?.productName || 'Discount alert'
+const getNotificationTitle = (notification) => notification?.title || notification?.productName || 'Discount alert'
+const isDiscountNotification = (notification) => !notification?.type || notification.type === 'discount'
 const refreshNotifications = () => {
   if (
     authStore.isLoggedIn &&
@@ -552,33 +555,7 @@ const refreshNotifications = () => {
   }
 }
 const formatNotificationTimestamp = (value) => {
-  if (!value) return ''
-
-  const date = new Date(value)
-
-  if (Number.isNaN(date.getTime())) {
-    return ''
-  }
-
-  const minutes = Math.round((date.getTime() - Date.now()) / 60000)
-
-  if (Math.abs(minutes) < 60) {
-    return relativeTimeFormatter.format(minutes, 'minute')
-  }
-
-  const hours = Math.round(minutes / 60)
-
-  if (Math.abs(hours) < 24) {
-    return relativeTimeFormatter.format(hours, 'hour')
-  }
-
-  const days = Math.round(hours / 24)
-
-  if (Math.abs(days) < 7) {
-    return relativeTimeFormatter.format(days, 'day')
-  }
-
-  return date.toLocaleDateString()
+  return value ? formatDisplayDateTime(value, '') : ''
 }
 
 const syncCartCount = async () => {

@@ -49,12 +49,6 @@
           </div>
 
           <div>
-            <label class="block mb-1 font-medium">Price</label>
-            <input v-model.number="form.price" type="number" min="0" class="w-full border rounded p-2" />
-            <p v-if="errors.price" class="text-red-600 text-sm">{{ errors.price }}</p>
-          </div>
-
-          <div>
             <label class="block mb-1 font-medium">Warranty Status</label>
             <input v-model="form.warrantyStatus" class="w-full border rounded p-2" />
             <p v-if="errors.warrantyStatus" class="text-red-600 text-sm">{{ errors.warrantyStatus }}</p>
@@ -151,7 +145,6 @@ const props = defineProps({
       serialNumber: '',
       description: '',
       quantityInStock: 0,
-      price: 0,
       warrantyStatus: '',
       distributorInfo: '',
       imageUrl: '',
@@ -245,7 +238,6 @@ const validate = () => {
   if (!form.serialNumber) errors.serialNumber = 'Serial number is required'
   if (!form.description) errors.description = 'Description is required'
   if (form.quantityInStock === '' || form.quantityInStock < 0) errors.quantityInStock = 'Stock must be 0 or more'
-  if (form.price === '' || form.price < 0) errors.price = 'Price must be 0 or more'
   if (!form.warrantyStatus) errors.warrantyStatus = 'Warranty status is required'
   if (!form.distributorInfo) errors.distributorInfo = 'Distributor info is required'
 
@@ -254,6 +246,7 @@ const validate = () => {
 
 const handleSubmit = () => {
   if (!validate()) return
-  emit('submit', { ...form, imageFile: selectedImageFile.value })
+  const { price: _price, ...productManagerFields } = form
+  emit('submit', { ...productManagerFields, imageFile: selectedImageFile.value })
 }
 </script>

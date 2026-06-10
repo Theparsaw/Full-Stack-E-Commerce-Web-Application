@@ -4,6 +4,7 @@ const {
   login,
   getCurrentUser,
   updateCurrentUser,
+  changeCurrentUserPassword,
 } = require("../controllers/authController");
 const { authMiddleware } = require("../middleware/authMiddleware");
 const { uploadProfilePhoto } = require("../middleware/uploadMiddleware");
@@ -17,5 +18,6 @@ router.get("/me", authMiddleware, getCurrentUser);
 
 // Save profile changes for the currently logged-in user
 router.put("/me", authMiddleware, uploadProfilePhoto.single("profileImage"), updateCurrentUser);
+router.put("/me/password", authMiddleware, changeCurrentUserPassword);
 
 module.exports = router;

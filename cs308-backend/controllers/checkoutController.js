@@ -38,6 +38,21 @@ const validateCartStock = async (cartItems) => {
   return { valid: true };
 };
 
+const buildOrderItems = async (cartItems) => {
+  const productIds = [...new Set(cartItems.map((item) => item.productId))];
+  const products = await Product.find({ productId: { $in: productIds } })
+    .select("productId costPrice")
+    .lean();
+  const costsByProductId = new Map(
+    products.map((product) => [product.productId, Number(product.costPrice || 0)])
+  );
+
+  return cartItems.map((item) => ({
+    ...(typeof item.toObject === "function" ? item.toObject() : item),
+    costPrice: costsByProductId.get(item.productId) || 0,
+  }));
+};
+
 const getCheckoutCart = async (req, res) => {
   try {
     const { cartId } = req.params;
@@ -130,10 +145,11 @@ const createOrder = async (req, res) => {
       return res.status(400).json(stockCheck);
     }
 
+    const orderItems = await buildOrderItems(cart.items);
     const order = await Order.create({
       userId: req.user.id,
       cartId: cart.cartId,
-      items: cart.items,
+      items: orderItems,
       totalPrice: cart.totalPrice,
       status: "pending_payment",
     });

@@ -12,7 +12,7 @@
         <div class="flex justify-between items-start mb-4">
           <div>
             <h3 class="font-semibold text-gray-800">Order ID: {{ req.orderId }}</h3>
-            <p class="text-sm text-gray-500">Requested: {{ new Date(req.createdAt).toLocaleDateString() }}</p>
+            <p class="text-sm text-gray-500">Requested: {{ formatDisplayDate(req.createdAt) }}</p>
           </div>
           <span :class="{
             'bg-yellow-100 text-yellow-800': req.status === 'pending',
@@ -47,7 +47,7 @@
         <div class="flex justify-between items-end border-t pt-4">
           <div>
             <p v-if="req.resolvedAt" class="text-xs text-gray-500 mb-1">
-              Resolved on: {{ new Date(req.resolvedAt).toLocaleDateString() }}
+              Resolved on: {{ formatDisplayDate(req.resolvedAt) }}
             </p>
             <p v-if="req.status === 'rejected' && req.managerNotes" class="text-sm text-red-600">
               <span class="font-bold">Reason:</span> {{ req.managerNotes }}
@@ -67,6 +67,7 @@
 import { ref, onMounted } from 'vue'
 import { getMyReturnRequests } from '../api/returnApi'
 import { resolveAssetUrl } from '../api/authApi'
+import { formatDisplayDate } from '../utils/dateFormat'
 
 const requests = ref([])
 const isLoading = ref(true)

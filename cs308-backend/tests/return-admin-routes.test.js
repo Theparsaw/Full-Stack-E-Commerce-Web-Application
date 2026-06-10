@@ -6,6 +6,7 @@ const User = require("../models/User");
 const ReturnRequest = require("../models/ReturnRequest");
 const Product = require("../models/Product");
 const Order = require("../models/Order");
+const Notification = require("../models/Notification");
 
 const uniqueSuffix = Date.now();
 const salesManagerEmail = `refund-sales-${uniqueSuffix}@example.com`;
@@ -100,6 +101,7 @@ afterAll(async () => {
   await ReturnRequest.deleteMany({ userId: customerId });
   await Order.findByIdAndDelete(approvalOrderId);
   await Product.deleteOne({ productId: approvalProductId });
+  await Notification.deleteMany({ userId: customerId });
   await User.deleteMany({ email: { $in: [salesManagerEmail, customerEmail] } });
   await mongoose.connection.close();
 });
@@ -147,6 +149,14 @@ describe("Return Request Admin API (Sales Manager)", () => {
     expect(String(updatedReq.reviewedBy)).toBe(salesManagerId);
     expect(updatedReq.resolvedAt).toBeInstanceOf(Date);
     expect(updatedReq.resolutionDate).toBeInstanceOf(Date);
+
+    const notification = await Notification.findOne({
+      userId: customerId,
+      type: "refund_rejected",
+      referenceId: String(pendingRequestId),
+    });
+    expect(notification).toBeDefined();
+    expect(notification.isRead).toBe(false);
   });
 
   test("PATCH /api/returns/:id/approve stores reviewer and resolution date", async () => {
@@ -172,6 +182,14 @@ describe("Return Request Admin API (Sales Manager)", () => {
     expect(String(updatedReq.reviewedBy)).toBe(salesManagerId);
     expect(updatedReq.resolvedAt).toBeInstanceOf(Date);
     expect(updatedReq.resolutionDate).toBeInstanceOf(Date);
+
+    const notification = await Notification.findOne({
+      userId: customerId,
+      type: "refund_approved",
+      referenceId: String(approvedRequestId),
+    });
+    expect(notification).toBeDefined();
+    expect(notification.isRead).toBe(false);
   });
 
   test("GET /api/returns/history shows manager decision details", async () => {

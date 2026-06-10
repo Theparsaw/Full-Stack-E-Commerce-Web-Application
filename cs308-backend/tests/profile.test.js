@@ -6,11 +6,13 @@ const User = require("../models/User");
 const createEmail = (label) => `profile-${label}-${Date.now()}@example.com`;
 const createdUserIds = [];
 let customerToken;
+let customerEmail;
 
 beforeAll(async () => {
+  customerEmail = createEmail("customer");
   const customerRes = await request(app).post("/api/auth/register").send({
     name: "Profile Test User",
-    email: createEmail("customer"),
+    email: customerEmail,
     password: "Password123!",
   });
   customerToken = customerRes.body.token;
@@ -89,5 +91,46 @@ describe("Profile API", () => {
     expect(res.statusCode).toBe(200);
     expect(res.body.user.name).toBe("Updated Name");
     expect(res.body.user.address).toBe("456 New Street");
+  });
+
+  test("PUT /api/auth/me/password requires auth", async () => {
+    const res = await request(app).put("/api/auth/me/password").send({
+      currentPassword: "Password123!",
+      newPassword: "NewPassword123!",
+    });
+
+    expect(res.statusCode).toBe(401);
+  });
+
+  test("PUT /api/auth/me/password rejects an incorrect current password", async () => {
+    const res = await request(app)
+      .put("/api/auth/me/password")
+      .set("Authorization", `Bearer ${customerToken}`)
+      .send({
+        currentPassword: "incorrect",
+        newPassword: "NewPassword123!",
+      });
+
+    expect(res.statusCode).toBe(401);
+    expect(res.body.message).toBe("Current password is incorrect");
+  });
+
+  test("PUT /api/auth/me/password changes the password", async () => {
+    const res = await request(app)
+      .put("/api/auth/me/password")
+      .set("Authorization", `Bearer ${customerToken}`)
+      .send({
+        currentPassword: "Password123!",
+        newPassword: "NewPassword123!",
+      });
+
+    expect(res.statusCode).toBe(200);
+
+    const loginRes = await request(app).post("/api/auth/login").send({
+      email: customerEmail,
+      password: "NewPassword123!",
+    });
+
+    expect(loginRes.statusCode).toBe(200);
   });
 });

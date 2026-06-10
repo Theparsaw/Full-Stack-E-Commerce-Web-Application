@@ -98,6 +98,9 @@ export const updateProduct = (id, data) =>
   api.put(`/products/${id}`, buildProductPayload(data)).then(normalizeProductResponse);
 export const updateProductPrice = (id, price) =>
   api.put(`/products/${id}/price`, { price });
+export const getProductsForPricing = () => api.get("/products/pricing/manage");
+export const updateProductPricing = (id, pricing) =>
+  api.put(`/products/${id}/price`, pricing);
 export const deleteProduct = (id) => api.delete(`/products/${id}`);
 
 export default api;

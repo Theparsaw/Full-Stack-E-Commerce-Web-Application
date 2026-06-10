@@ -13,6 +13,7 @@ const createdUserIds = [];
 const createdProductIds = [];
 const createdCartIds = [];
 const createdOrderIds = [];
+let salesManagerToken;
 
 const createEmail = (label) => `security-${label}-${Date.now()}@example.com`;
 const createCartId = (label) => `security-cart-${label}-${Date.now()}`;
@@ -38,6 +39,20 @@ beforeAll(async () => {
     role: "product_manager",
   });
   createdUserIds.push(manager._id.toString());
+
+  const salesManager = await User.create({
+    name: "Security Sales Manager",
+    email: createEmail("sales-manager"),
+    password,
+    role: "sales_manager",
+  });
+  createdUserIds.push(salesManager._id.toString());
+
+  const salesManagerLogin = await request(app).post("/api/auth/login").send({
+    email: salesManager.email,
+    password: "ManagerPass123!",
+  });
+  salesManagerToken = salesManagerLogin.body.token;
 });
 
 afterAll(async () => {
@@ -168,7 +183,16 @@ describe("Security and end-to-end integration", () => {
       });
 
     expect(createProductRes.statusCode).toBe(201);
+    expect(createProductRes.body.product.price).toBe(0);
     createdProductIds.push(createProductRes.body.product.productId);
+
+    const priceRes = await request(app)
+      .put(`/api/products/${createProductRes.body.product.productId}/price`)
+      .set("Authorization", `Bearer ${salesManagerToken}`)
+      .send({ price: 120 });
+
+    expect(priceRes.statusCode).toBe(200);
+    expect(priceRes.body.product.price).toBe(120);
 
     const addToCartRes = await request(app)
       .post(`/api/cart/${cartId}/items`)
@@ -221,7 +245,16 @@ describe("Security and end-to-end integration", () => {
       });
 
     expect(createProductRes.statusCode).toBe(201);
+    expect(createProductRes.body.product.price).toBe(0);
     createdProductIds.push(createProductRes.body.product.productId);
+
+    const priceRes = await request(app)
+      .put(`/api/products/${createProductRes.body.product.productId}/price`)
+      .set("Authorization", `Bearer ${salesManagerToken}`)
+      .send({ price: 250 });
+
+    expect(priceRes.statusCode).toBe(200);
+    expect(priceRes.body.product.price).toBe(250);
 
     const customerRes = await registerCustomer("full-flow");
     const token = customerRes.body.token;

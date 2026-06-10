@@ -1,12 +1,15 @@
 const Invoice = require("../models/Invoice");
 const Order = require("../models/Order");
+const Product = require("../models/Product");
+const ReturnRequest = require("../models/ReturnRequest");
 const User = require("../models/User");
 const { generateInvoicePDF } = require("../utils/invoiceGenerator");
+const { decryptValue } = require("../utils/encryption");
 
 const serializeInvoice = (invoice) => ({
   id: invoice._id,
   orderId: invoice.orderId,
-  invoiceNumber: invoice.invoiceNumber,
+  invoiceNumber: decryptValue(invoice.invoiceNumber),
   amount: invoice.amount,
   status: invoice.status,
   createdAt: invoice.createdAt,
@@ -55,12 +58,43 @@ const getLineDiscountLoss = (item) => {
   return Math.max(0, originalPrice - unitPrice) * Number(item.quantity || 0);
 };
 
-const buildReportSummary = (orders) => {
+const roundMoney = (value) => Number(Number(value || 0).toFixed(2));
+
+const getItemCost = (item, costsByProductId) => {
+  if (item.costPrice !== undefined && item.costPrice !== null) {
+    return Number(item.costPrice || 0);
+  }
+
+  return Number(costsByProductId.get(String(item.productId)) || 0);
+};
+
+const createReportPoint = (date) => ({
+  date,
+  grossRevenue: 0,
+  refunds: 0,
+  revenue: 0,
+  costOfGoods: 0,
+  profitLoss: 0,
+  discountLoss: 0,
+  orders: 0,
+  itemsSold: 0,
+  returnedItems: 0,
+});
+
+const buildReportSummary = (orders, refunds, costsByProductId, refundOrders = []) => {
   const summaryByDate = new Map();
 
-  let revenue = 0;
+  let grossRevenue = 0;
+  let refundTotal = 0;
+  let grossCostOfGoods = 0;
+  let refundedCostOfGoods = 0;
   let discountLoss = 0;
   let itemsSold = 0;
+  let returnedItems = 0;
+  let legacyCostItems = 0;
+  const ordersById = new Map(
+    [...orders, ...refundOrders].map((order) => [String(order._id), order])
+  );
 
   orders.forEach((order) => {
     const orderRevenue = Number(order.totalPrice || 0);
@@ -72,42 +106,86 @@ const buildReportSummary = (orders) => {
       (sum, item) => sum + Number(item.quantity || 0),
       0
     );
+    const orderCost = (order.items || []).reduce((sum, item) => {
+      if (item.costPrice === undefined || item.costPrice === null) {
+        legacyCostItems += Number(item.quantity || 0);
+      }
+      return sum + getItemCost(item, costsByProductId) * Number(item.quantity || 0);
+    }, 0);
     const dateKey = getOrderDate(order)?.toISOString().slice(0, 10) || "unknown";
 
-    revenue += orderRevenue;
+    grossRevenue += orderRevenue;
+    grossCostOfGoods += orderCost;
     discountLoss += orderDiscountLoss;
     itemsSold += orderItemsSold;
 
-    const current = summaryByDate.get(dateKey) || {
-      date: dateKey,
-      revenue: 0,
-      discountLoss: 0,
-      estimatedProfit: 0,
-      orders: 0,
-      itemsSold: 0,
-    };
+    const current = summaryByDate.get(dateKey) || createReportPoint(dateKey);
 
+    current.grossRevenue += orderRevenue;
     current.revenue += orderRevenue;
+    current.costOfGoods += orderCost;
+    current.profitLoss = current.revenue - current.costOfGoods;
     current.discountLoss += orderDiscountLoss;
-    current.estimatedProfit = current.revenue - current.discountLoss;
     current.orders += 1;
     current.itemsSold += orderItemsSold;
     summaryByDate.set(dateKey, current);
   });
 
+  refunds.forEach((refund) => {
+    const order = ordersById.get(String(refund.orderId));
+    const dateKey = (refund.resolvedAt || refund.resolutionDate || refund.updatedAt)
+      ?.toISOString()
+      .slice(0, 10) || "unknown";
+    const refundAmount = Number(refund.refundAmount || 0);
+    let refundCost = 0;
+    let refundItems = 0;
+
+    (refund.items || []).forEach((returnedItem) => {
+      const matchingOrderItem = (order?.items || []).find(
+        (item) => String(item.productId) === String(returnedItem.productId)
+      );
+      const quantity = Number(returnedItem.quantity || 0);
+      refundItems += quantity;
+      refundCost += getItemCost(matchingOrderItem || returnedItem, costsByProductId) * quantity;
+    });
+
+    refundTotal += refundAmount;
+    refundedCostOfGoods += refundCost;
+    returnedItems += refundItems;
+
+    const current = summaryByDate.get(dateKey) || createReportPoint(dateKey);
+    current.refunds += refundAmount;
+    current.revenue -= refundAmount;
+    current.costOfGoods -= refundCost;
+    current.profitLoss = current.revenue - current.costOfGoods;
+    current.returnedItems += refundItems;
+    summaryByDate.set(dateKey, current);
+  });
+
+  const revenue = grossRevenue - refundTotal;
+  const costOfGoods = grossCostOfGoods - refundedCostOfGoods;
+
   return {
-    revenue: Number(revenue.toFixed(2)),
-    discountLoss: Number(discountLoss.toFixed(2)),
-    estimatedProfit: Number((revenue - discountLoss).toFixed(2)),
+    grossRevenue: roundMoney(grossRevenue),
+    refunds: roundMoney(refundTotal),
+    revenue: roundMoney(revenue),
+    costOfGoods: roundMoney(costOfGoods),
+    profitLoss: roundMoney(revenue - costOfGoods),
+    discountLoss: roundMoney(discountLoss),
     orderCount: orders.length,
     itemsSold,
+    returnedItems,
+    legacyCostItems,
     chart: Array.from(summaryByDate.values())
       .sort((left, right) => left.date.localeCompare(right.date))
       .map((point) => ({
         ...point,
-        revenue: Number(point.revenue.toFixed(2)),
-        discountLoss: Number(point.discountLoss.toFixed(2)),
-        estimatedProfit: Number(point.estimatedProfit.toFixed(2)),
+        grossRevenue: roundMoney(point.grossRevenue),
+        refunds: roundMoney(point.refunds),
+        revenue: roundMoney(point.revenue),
+        costOfGoods: roundMoney(point.costOfGoods),
+        profitLoss: roundMoney(point.profitLoss),
+        discountLoss: roundMoney(point.discountLoss),
       })),
   };
 };
@@ -190,9 +268,52 @@ const getSalesReport = async (req, res) => {
       ...(Object.keys(paidAt).length ? { paidAt } : {}),
     };
     const orders = await Order.find(filter).sort({ paidAt: 1, createdAt: 1 }).lean();
+    const resolutionDate = {};
+    if (range.startDate) resolutionDate.$gte = range.startDate;
+    if (range.endDate) resolutionDate.$lte = range.endDate;
+    const refunds = await ReturnRequest.find({
+      status: "approved",
+      ...(Object.keys(resolutionDate).length
+        ? {
+            $or: [
+              { resolvedAt: resolutionDate },
+              { resolvedAt: null, resolutionDate },
+            ],
+          }
+        : {}),
+    }).lean();
+    const orderIdsInRange = new Set(orders.map((order) => String(order._id)));
+    const missingRefundOrderIds = [
+      ...new Set(
+        refunds
+          .map((refund) => String(refund.orderId))
+          .filter((orderId) => !orderIdsInRange.has(orderId))
+      ),
+    ];
+    const missingRefundOrders = missingRefundOrderIds.length
+      ? await Order.find({ _id: { $in: missingRefundOrderIds } }).lean()
+      : [];
+    const reportOrdersById = new Map(
+      [...orders, ...missingRefundOrders].map((order) => [String(order._id), order])
+    );
+    const productIds = [
+      ...new Set(
+        [...reportOrdersById.values()]
+          .flatMap((order) => order.items || [])
+          .map((item) => String(item.productId))
+      ),
+    ];
+    const products = productIds.length
+      ? await Product.find({ productId: { $in: productIds } })
+          .select("productId costPrice")
+          .lean()
+      : [];
+    const costsByProductId = new Map(
+      products.map((product) => [String(product.productId), Number(product.costPrice || 0)])
+    );
 
     return res.status(200).json({
-      summary: buildReportSummary(orders),
+      summary: buildReportSummary(orders, refunds, costsByProductId, missingRefundOrders),
     });
   } catch (error) {
     return res.status(500).json({
@@ -232,7 +353,7 @@ const downloadInvoice = async (req, res) => {
     }
 
     const pdfBuffer = await generateInvoicePDF(order, user);
-    const safeInvoiceNumber = invoice.invoiceNumber.replace(/[^a-zA-Z0-9_-]/g, "_");
+    const safeInvoiceNumber = decryptValue(invoice.invoiceNumber).replace(/[^a-zA-Z0-9_-]/g, "_");
 
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader(
@@ -275,7 +396,7 @@ const downloadSalesInvoice = async (req, res) => {
     }
 
     const pdfBuffer = await generateInvoicePDF(order, user);
-    const safeInvoiceNumber = invoice.invoiceNumber.replace(/[^a-zA-Z0-9_-]/g, "_");
+    const safeInvoiceNumber = decryptValue(invoice.invoiceNumber).replace(/[^a-zA-Z0-9_-]/g, "_");
 
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader(

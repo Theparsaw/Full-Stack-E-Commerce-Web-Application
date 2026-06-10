@@ -13,6 +13,9 @@ export const getDeliveries = () =>
 export const updateDeliveryStatus = (deliveryId, status) =>
   api.patch(`/deliveries/${deliveryId}/status`, { status }, getAuthConfig())
 
+export const updateDeliveryOrderDate = (deliveryId, orderDate) =>
+  api.patch(`/deliveries/${deliveryId}/order-date`, { orderDate }, getAuthConfig())
+
 export const downloadDeliveryInvoice = (deliveryId) =>
   api.get(`/deliveries/${deliveryId}/invoice/download`, {
     ...getAuthConfig(),

@@ -159,4 +159,45 @@ const updateCurrentUser = asyncHandler(async (req, res) => {
   });
 });
 
-module.exports = { register, login, getCurrentUser, updateCurrentUser };
+const changeCurrentUserPassword = asyncHandler(async (req, res) => {
+  const { currentPassword, newPassword } = req.body || {};
+
+  if (!currentPassword || !newPassword) {
+    throw new AppError(
+      "Please provide current password and new password",
+      400,
+      "VALIDATION_ERROR"
+    );
+  }
+
+  if (newPassword.length < 6) {
+    throw new AppError(
+      "New password must be at least 6 characters",
+      400,
+      "VALIDATION_ERROR"
+    );
+  }
+
+  const user = await User.findById(req.user.id);
+  if (!user) {
+    throw new AppError("User not found", 404, "USER_NOT_FOUND");
+  }
+
+  const isCurrentPasswordValid = await bcrypt.compare(currentPassword, user.password);
+  if (!isCurrentPasswordValid) {
+    throw new AppError("Current password is incorrect", 401, "INVALID_PASSWORD");
+  }
+
+  user.password = await bcrypt.hash(newPassword, 10);
+  await user.save();
+
+  res.status(200).json({ message: "Password changed successfully" });
+});
+
+module.exports = {
+  register,
+  login,
+  getCurrentUser,
+  updateCurrentUser,
+  changeCurrentUserPassword,
+};

@@ -2,6 +2,9 @@ jest.mock("../models/Order", () => ({
   findById: jest.fn(),
   findOneAndUpdate: jest.fn(),
   find: jest.fn(),
+  collection: {
+    updateOne: jest.fn(),
+  },
 }));
 
 jest.mock("../models/Delivery", () => ({
@@ -9,6 +12,9 @@ jest.mock("../models/Delivery", () => ({
   find: jest.fn(),
   findOne: jest.fn(),
   findById: jest.fn(),
+  collection: {
+    updateOne: jest.fn(),
+  },
 }));
 
 jest.mock("../models/Product", () => ({
@@ -19,6 +25,9 @@ jest.mock("../models/Product", () => ({
 
 jest.mock("../models/Payment", () => ({
   create: jest.fn(),
+  collection: {
+    updateMany: jest.fn(),
+  },
 }));
 
 jest.mock("../models/Cart", () => ({
@@ -29,6 +38,9 @@ jest.mock("../models/Invoice", () => ({
   create: jest.fn(),
   find: jest.fn(),
   findOne: jest.fn(),
+  collection: {
+    updateOne: jest.fn(),
+  },
 }));
 
 jest.mock("../models/User", () => ({
@@ -63,6 +75,7 @@ const { cancelMyOrder, getMyOrders } = require("../controllers/orderController")
 const {
   getAllDeliveries,
   updateDeliveryStatus,
+  updateOrderDate,
 } = require("../controllers/deliveryController");
 const { authorize } = require("../middleware/authMiddleware");
 
@@ -120,6 +133,14 @@ describe("payment, delivery, and tracking coverage", () => {
 
   beforeEach(() => {
     jest.resetAllMocks();
+    User.findById.mockReturnValue({
+      select: jest.fn().mockResolvedValue({
+        _id: "user-1",
+        address: "",
+        email: "ada@example.com",
+        name: "Ada Lovelace",
+      }),
+    });
     consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
     startSessionSpy = jest.spyOn(mongoose, "startSession").mockResolvedValue({
       startTransaction: jest.fn(),
@@ -340,10 +361,13 @@ describe("payment, delivery, and tracking coverage", () => {
         session: jest.fn().mockResolvedValue(cart),
       });
       Delivery.create.mockResolvedValue([delivery]);
-      User.findById.mockResolvedValue({
-        _id: "user-1",
-        email: "ada@example.com",
-        name: "Ada Lovelace",
+      User.findById.mockReturnValue({
+        select: jest.fn().mockResolvedValue({
+          _id: "user-1",
+          email: "ada@example.com",
+          name: "Ada Lovelace",
+          address: "",
+        }),
       });
       generateInvoicePDF.mockResolvedValue(Buffer.from("pdf"));
       sendInvoiceEmail.mockResolvedValue(true);
@@ -387,7 +411,7 @@ describe("payment, delivery, and tracking coverage", () => {
             orderId: order._id,
             userId: order.userId,
             status: "processing",
-            address: "Default address",
+            address: "Address not provided",
           }),
         ],
         expect.objectContaining({ session: expect.any(Object) }),
@@ -1054,6 +1078,65 @@ describe("payment, delivery, and tracking coverage", () => {
           status: "out_for_delivery",
         }),
       });
+    });
+
+    test("updateOrderDate updates linked demo record dates", async () => {
+      const requestedDate = "2026-04-20T10:00:00.000Z";
+      const req = {
+        params: { id: "delivery-1" },
+        body: { orderDate: requestedDate },
+      };
+      const res = createRes();
+      const next = jest.fn();
+
+      Delivery.findById.mockReturnValue({
+        lean: jest.fn().mockResolvedValue({
+          _id: "delivery-1",
+          orderId: "order-1",
+        }),
+      });
+      Order.findById.mockReturnValue({
+        lean: jest.fn().mockResolvedValue({
+          _id: "order-1",
+          status: "paid",
+        }),
+      });
+      Order.collection.updateOne.mockResolvedValue({ modifiedCount: 1 });
+      Delivery.collection.updateOne.mockResolvedValue({ modifiedCount: 1 });
+      Payment.collection.updateMany.mockResolvedValue({ modifiedCount: 1 });
+      Invoice.collection.updateOne.mockResolvedValue({ modifiedCount: 1 });
+
+      await updateOrderDate(req, res, next);
+
+      const parsedDate = new Date(requestedDate);
+      expect(Order.collection.updateOne).toHaveBeenCalledWith(
+        { _id: "order-1" },
+        { $set: { paidAt: parsedDate, createdAt: parsedDate } },
+      );
+      expect(Delivery.collection.updateOne).toHaveBeenCalled();
+      expect(Payment.collection.updateMany).toHaveBeenCalled();
+      expect(Invoice.collection.updateOne).toHaveBeenCalled();
+      expect(next).not.toHaveBeenCalled();
+      expect(res.status).toHaveBeenCalledWith(200);
+    });
+
+    test("updateOrderDate rejects future dates", async () => {
+      const req = {
+        params: { id: "delivery-1" },
+        body: { orderDate: "2099-01-01T00:00:00.000Z" },
+      };
+      const res = createRes();
+      const next = jest.fn();
+
+      await updateOrderDate(req, res, next);
+
+      expect(next).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: "Order date cannot be in the future",
+          statusCode: 400,
+        }),
+      );
+      expect(Delivery.findById).not.toHaveBeenCalled();
     });
   });
 

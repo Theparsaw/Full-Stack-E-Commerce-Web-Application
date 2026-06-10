@@ -89,6 +89,25 @@ describe("Delivery API", () => {
     expect(res.statusCode).toBe(403);
   });
 
+  test("PATCH /api/deliveries/:id/order-date requires auth", async () => {
+    const fakeId = new mongoose.Types.ObjectId();
+    const res = await request(app)
+      .patch(`/api/deliveries/${fakeId}/order-date`)
+      .send({ orderDate: "2026-04-20T10:00:00.000Z" });
+
+    expect(res.statusCode).toBe(401);
+  });
+
+  test("PATCH /api/deliveries/:id/order-date denied for regular customer", async () => {
+    const fakeId = new mongoose.Types.ObjectId();
+    const res = await request(app)
+      .patch(`/api/deliveries/${fakeId}/order-date`)
+      .set("Authorization", `Bearer ${customerToken}`)
+      .send({ orderDate: "2026-04-20T10:00:00.000Z" });
+
+    expect(res.statusCode).toBe(403);
+  });
+
   test("PATCH /api/deliveries/:id/status returns 404 for non-existent delivery", async () => {
     const fakeId = new mongoose.Types.ObjectId();
     const res = await request(app)

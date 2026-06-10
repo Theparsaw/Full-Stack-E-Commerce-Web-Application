@@ -8,6 +8,14 @@ jest.mock("../models/Order", () => ({
   find: jest.fn(),
 }));
 
+jest.mock("../models/Product", () => ({
+  find: jest.fn(),
+}));
+
+jest.mock("../models/ReturnRequest", () => ({
+  find: jest.fn(),
+}));
+
 jest.mock("../models/User", () => ({
   findById: jest.fn(),
   find: jest.fn(),
@@ -19,8 +27,11 @@ jest.mock("../utils/invoiceGenerator", () => ({
 
 const Invoice = require("../models/Invoice");
 const Order = require("../models/Order");
+const Product = require("../models/Product");
+const ReturnRequest = require("../models/ReturnRequest");
 const User = require("../models/User");
 const { generateInvoicePDF } = require("../utils/invoiceGenerator");
+const { encryptValue } = require("../utils/encryption");
 const {
   downloadInvoice,
   downloadSalesInvoice,
@@ -83,6 +94,31 @@ describe("invoiceController", () => {
           createdAt: invoices[0].createdAt,
           updatedAt: invoices[0].updatedAt,
         },
+      ],
+    });
+  });
+
+  test("getMyInvoices decrypts invoice numbers returned by lean queries", async () => {
+    const encryptedInvoiceNumber = encryptValue("INV-ENCRYPTED");
+    const invoices = [
+      {
+        _id: "invoice-1",
+        orderId: "order-1",
+        invoiceNumber: encryptedInvoiceNumber,
+        amount: 120,
+        status: "generated",
+      },
+    ];
+    Invoice.find.mockReturnValue(createQuery(invoices));
+    const res = createRes();
+
+    await getMyInvoices({ user: { id: "user-1" } }, res);
+
+    expect(res.json).toHaveBeenCalledWith({
+      invoices: [
+        expect.objectContaining({
+          invoiceNumber: "INV-ENCRYPTED",
+        }),
       ],
     });
   });
@@ -219,7 +255,7 @@ describe("invoiceController", () => {
     });
   });
 
-  test("getSalesReport calculates revenue and discount loss for paid orders", async () => {
+  test("getSalesReport calculates net revenue and profit from product costs", async () => {
     const orders = [
       {
         _id: "order-1",
@@ -233,6 +269,7 @@ describe("invoiceController", () => {
             name: "Phone",
             originalPrice: 100,
             unitPrice: 90,
+            costPrice: 60,
             quantity: 2,
           },
         ],
@@ -240,6 +277,8 @@ describe("invoiceController", () => {
     ];
     const orderQuery = createQuery(orders);
     Order.find.mockReturnValue(orderQuery);
+    ReturnRequest.find.mockReturnValue({ lean: jest.fn().mockResolvedValue([]) });
+    Product.find.mockReturnValue(createQuery([]));
 
     const req = {
       query: {
@@ -262,22 +301,79 @@ describe("invoiceController", () => {
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith({
       summary: {
+        grossRevenue: 180,
+        refunds: 0,
         revenue: 180,
+        costOfGoods: 120,
+        profitLoss: 60,
         discountLoss: 20,
-        estimatedProfit: 160,
         orderCount: 1,
         itemsSold: 2,
+        returnedItems: 0,
+        legacyCostItems: 0,
         chart: [
           {
             date: "2026-04-20",
+            grossRevenue: 180,
+            refunds: 0,
             revenue: 180,
+            costOfGoods: 120,
+            profitLoss: 60,
             discountLoss: 20,
-            estimatedProfit: 160,
             orders: 1,
             itemsSold: 2,
+            returnedItems: 0,
           },
         ],
       },
+    });
+  });
+
+  test("getSalesReport subtracts approved refunds and reverses refunded item cost", async () => {
+    const order = {
+      _id: "order-1",
+      status: "paid",
+      totalPrice: 200,
+      paidAt: new Date("2026-04-20T10:00:00.000Z"),
+      items: [
+        {
+          productId: "p001",
+          name: "Phone",
+          unitPrice: 100,
+          originalPrice: 100,
+          costPrice: 60,
+          quantity: 2,
+        },
+      ],
+    };
+    const refund = {
+      orderId: "order-1",
+      status: "approved",
+      refundAmount: 100,
+      resolvedAt: new Date("2026-04-22T10:00:00.000Z"),
+      items: [{ productId: "p001", name: "Phone", unitPrice: 100, quantity: 1 }],
+    };
+
+    Order.find.mockReturnValue(createQuery([order]));
+    ReturnRequest.find.mockReturnValue({ lean: jest.fn().mockResolvedValue([refund]) });
+    Product.find.mockReturnValue(createQuery([]));
+    const res = createRes();
+
+    await getSalesReport(
+      { query: { startDate: "2026-04-01", endDate: "2026-04-30" } },
+      res
+    );
+
+    expect(res.json).toHaveBeenCalledWith({
+      summary: expect.objectContaining({
+        grossRevenue: 200,
+        refunds: 100,
+        revenue: 100,
+        costOfGoods: 60,
+        profitLoss: 40,
+        itemsSold: 2,
+        returnedItems: 1,
+      }),
     });
   });
 

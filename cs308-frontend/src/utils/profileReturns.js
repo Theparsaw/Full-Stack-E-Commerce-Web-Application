@@ -1,11 +1,7 @@
-const defaultFormatDate = (value) => {
-  if (!value) return 'Unknown'
+import { formatDisplayDate } from './dateFormat'
 
-  return new Date(value).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  })
+const defaultFormatDate = (value) => {
+  return formatDisplayDate(value, 'Unknown')
 }
 
 export const createEmptyReturnForm = () => ({

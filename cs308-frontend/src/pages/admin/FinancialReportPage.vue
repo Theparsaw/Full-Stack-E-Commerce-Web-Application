@@ -4,8 +4,7 @@
       <p class="mb-2 text-sm font-semibold text-orange-600">Reports</p>
       <h1 class="text-3xl font-bold text-gray-900">Financial Report</h1>
       <p class="mt-2 max-w-3xl text-gray-600">
-        Choose a paid-order date range, calculate totals, and explore revenue, discount loss, and
-        estimated profit/loss on the same chart by day, week, or month.
+        Calculate revenue and profit/loss from paid sales, approved refunds, and product costs.
       </p>
     </div>
 
@@ -98,52 +97,61 @@
       </p>
     </section>
 
-    <section class="mb-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-      <!-- Revenue -->
+    <section class="mb-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
       <div class="rounded-2xl border border-gray-200 bg-white p-5">
-        <p class="text-sm font-medium text-gray-500">Total Revenue</p>
+        <p class="text-sm font-medium text-gray-500">Gross Sales Revenue</p>
         <p class="mt-2 text-2xl font-bold text-gray-900">
-          {{ formatCurrency(report.revenue) }}
+          {{ formatCurrency(report.grossRevenue) }}
         </p>
-        <p class="mt-1 text-xs text-gray-400">Collected from all paid orders</p>
+        <p class="mt-1 text-xs text-gray-400">Paid sales before refunds</p>
       </div>
 
-      <!-- Discount Loss -->
       <div class="rounded-2xl border border-red-100 bg-red-50 p-5">
-        <p class="text-sm font-medium text-red-600">Discount Loss</p>
+        <p class="text-sm font-medium text-red-600">Approved Refunds</p>
         <p class="mt-2 text-2xl font-bold text-red-700">
-          − {{ formatCurrency(report.discountLoss) }}
+          − {{ formatCurrency(report.refunds) }}
         </p>
-        <p class="mt-1 text-xs text-red-400">Revenue lost due to applied discounts</p>
+        <p class="mt-1 text-xs text-red-400">Refunds resolved during the selected period</p>
       </div>
 
-      <!-- Net Profit / Loss -->
+      <div class="rounded-2xl border border-gray-200 bg-white p-5">
+        <p class="text-sm font-medium text-gray-500">Net Revenue</p>
+        <p class="mt-2 text-2xl font-bold text-gray-900">{{ formatCurrency(report.revenue) }}</p>
+        <p class="mt-1 text-xs text-gray-400">Gross sales minus approved refunds</p>
+      </div>
+
+      <div class="rounded-2xl border border-amber-100 bg-amber-50 p-5">
+        <p class="text-sm font-medium text-amber-700">Cost of Goods Sold</p>
+        <p class="mt-2 text-2xl font-bold text-amber-800">{{ formatCurrency(report.costOfGoods) }}</p>
+        <p class="mt-1 text-xs text-amber-600">Product costs, reversed for refunded items</p>
+      </div>
+
       <div
         class="rounded-2xl border p-5"
-        :class="report.estimatedProfit >= 0
+        :class="report.profitLoss >= 0
           ? 'border-emerald-200 bg-emerald-50'
           : 'border-red-200 bg-red-50'"
       >
         <div class="flex items-center gap-2">
           <span
             class="rounded-full px-2 py-0.5 text-xs font-bold uppercase tracking-wide"
-            :class="report.estimatedProfit >= 0
+            :class="report.profitLoss >= 0
               ? 'bg-emerald-200 text-emerald-800'
               : 'bg-red-200 text-red-800'"
           >
-            {{ report.estimatedProfit >= 0 ? '▲ Profit' : '▼ Loss' }}
+            {{ report.profitLoss >= 0 ? '▲ Profit' : '▼ Loss' }}
           </span>
         </div>
         <p
           class="mt-2 text-2xl font-bold"
-          :class="report.estimatedProfit >= 0 ? 'text-emerald-700' : 'text-red-700'"
+          :class="report.profitLoss >= 0 ? 'text-emerald-700' : 'text-red-700'"
         >
-          {{ report.estimatedProfit >= 0 ? '+' : '' }}{{ formatCurrency(report.estimatedProfit) }}
+          {{ report.profitLoss >= 0 ? '+' : '' }}{{ formatCurrency(report.profitLoss) }}
         </p>
         <p class="mt-1 text-xs"
-          :class="report.estimatedProfit >= 0 ? 'text-emerald-500' : 'text-red-400'"
+          :class="report.profitLoss >= 0 ? 'text-emerald-500' : 'text-red-400'"
         >
-          Revenue minus discount losses
+          Net revenue minus cost of goods sold
         </p>
       </div>
 
@@ -154,6 +162,7 @@
           {{ report.orderCount }} orders
         </p>
         <p class="mt-1 text-xs text-gray-400">{{ report.itemsSold }} items total</p>
+        <p class="mt-1 text-xs text-gray-400">{{ report.returnedItems }} items refunded</p>
       </div>
     </section>
 
@@ -226,8 +235,9 @@
             <tr class="text-left text-xs uppercase tracking-wide text-gray-500">
               <th class="px-3 py-3 font-semibold">Period</th>
               <th class="px-3 py-3 font-semibold">Revenue</th>
-              <th class="px-3 py-3 font-semibold">Estimated Profit / Loss</th>
-              <th class="px-3 py-3 font-semibold">Discount Loss</th>
+              <th class="px-3 py-3 font-semibold">Refunds</th>
+              <th class="px-3 py-3 font-semibold">Cost of Goods</th>
+              <th class="px-3 py-3 font-semibold">Profit / Loss</th>
               <th class="px-3 py-3 font-semibold">Orders / Items</th>
             </tr>
           </thead>
@@ -238,13 +248,15 @@
               <td class="px-3 py-3">
                 <span
                   class="inline-flex items-center gap-1 font-semibold"
-                  :class="point.estimatedProfit >= 0 ? 'text-emerald-700' : 'text-red-600'"
+                  :class="point.profitLoss >= 0 ? 'text-emerald-700' : 'text-red-600'"
                 >
-                  <span class="text-xs font-bold">{{ point.estimatedProfit >= 0 ? '▲' : '▼' }}</span>
-                  {{ point.estimatedProfit >= 0 ? '+' : '' }}{{ formatCurrency(point.estimatedProfit) }}
+                  {{ formatCurrency(point.refunds) }}
                 </span>
               </td>
-              <td class="px-3 py-3 text-red-600">{{ formatCurrency(point.discountLoss) }}</td>
+              <td class="px-3 py-3">{{ formatCurrency(point.costOfGoods) }}</td>
+              <td class="px-3 py-3 font-semibold" :class="point.profitLoss >= 0 ? 'text-emerald-700' : 'text-red-600'">
+                {{ point.profitLoss >= 0 ? '+' : '' }}{{ formatCurrency(point.profitLoss) }}
+              </td>
               <td class="px-3 py-3">{{ point.orders }} / {{ point.itemsSold }}</td>
             </tr>
           </tbody>
@@ -283,8 +295,9 @@ const chartTypeOptions = [
 
 const seriesOptions = [
   { key: 'revenue', label: 'Revenue', color: '#10b981' },
-  { key: 'estimatedProfit', label: 'Profit / Loss', color: '#f97316' },
-  { key: 'discountLoss', label: 'Discount Loss', color: '#ef4444' },
+  { key: 'costOfGoods', label: 'Cost of Goods', color: '#f59e0b' },
+  { key: 'profitLoss', label: 'Profit / Loss', color: '#f97316' },
+  { key: 'refunds', label: 'Refunds', color: '#ef4444' },
 ]
 
 const filters = ref({
@@ -297,11 +310,16 @@ const appliedFilters = ref({
 })
 
 const report = ref({
+  grossRevenue: 0,
+  refunds: 0,
   revenue: 0,
+  costOfGoods: 0,
+  profitLoss: 0,
   discountLoss: 0,
-  estimatedProfit: 0,
   orderCount: 0,
   itemsSold: 0,
+  returnedItems: 0,
+  legacyCostItems: 0,
   chart: [],
 })
 
@@ -311,8 +329,9 @@ const chartGranularity = ref('day')
 const chartType = ref('line')
 const seriesVisibility = ref({
   revenue: true,
-  estimatedProfit: true,
-  discountLoss: true,
+  costOfGoods: true,
+  profitLoss: true,
+  refunds: true,
 })
 
 const requestParams = computed(() => ({
@@ -347,11 +366,16 @@ const loadReport = async () => {
     const res = await getSalesReport(requestParams.value)
 
     report.value = res.data?.summary || {
+      grossRevenue: 0,
+      refunds: 0,
       revenue: 0,
+      costOfGoods: 0,
+      profitLoss: 0,
       discountLoss: 0,
-      estimatedProfit: 0,
       orderCount: 0,
       itemsSold: 0,
+      returnedItems: 0,
+      legacyCostItems: 0,
       chart: [],
     }
 

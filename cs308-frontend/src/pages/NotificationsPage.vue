@@ -37,7 +37,10 @@
                 {{ getNotificationTitle(notification) }}
               </p>
 
-              <span class="rounded-full bg-white px-2 py-1 text-xs font-medium text-orange-600 ring-1 ring-orange-100">
+              <span
+                v-if="isDiscountNotification(notification)"
+                class="rounded-full bg-white px-2 py-1 text-xs font-medium text-orange-600 ring-1 ring-orange-100"
+              >
                 -{{ notification.discountPercentage }}%
               </span>
             </div>
@@ -73,40 +76,16 @@
 <script setup>
 import { onMounted } from "vue";
 import { notificationStore } from "../store/notificationStore";
-
-const relativeTimeFormatter = new Intl.RelativeTimeFormat(undefined, { numeric: "auto" });
+import { formatDisplayDateTime } from "../utils/dateFormat";
 
 const getNotificationTitle = (notification) =>
-  notification?.productName || "Discount alert";
+  notification?.title || notification?.productName || "Discount alert";
+
+const isDiscountNotification = (notification) =>
+  !notification?.type || notification.type === "discount";
 
 const formatNotificationTimestamp = (value) => {
-  if (!value) return "";
-
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return "";
-  }
-
-  const minutes = Math.round((date.getTime() - Date.now()) / 60000);
-
-  if (Math.abs(minutes) < 60) {
-    return relativeTimeFormatter.format(minutes, "minute");
-  }
-
-  const hours = Math.round(minutes / 60);
-
-  if (Math.abs(hours) < 24) {
-    return relativeTimeFormatter.format(hours, "hour");
-  }
-
-  const days = Math.round(hours / 24);
-
-  if (Math.abs(days) < 7) {
-    return relativeTimeFormatter.format(days, "day");
-  }
-
-  return date.toLocaleString();
+  return value ? formatDisplayDateTime(value, "") : "";
 };
 
 onMounted(() => {

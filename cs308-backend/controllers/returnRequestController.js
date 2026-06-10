@@ -6,6 +6,23 @@ const Delivery = require("../models/Delivery");
 const Product = require("../models/Product");
 const User = require("../models/User");
 const { sendRefundApprovedEmail } = require("../utils/emailSender");
+const { createCustomerNotification } = require("../utils/createCustomerNotification");
+
+const getReturnProductNames = (returnRequest) =>
+  (returnRequest.items || []).map((item) => item.name).filter(Boolean).join(", ") || "your returned product";
+
+const notifyReturnResolution = (returnRequest, decision) =>
+  createCustomerNotification({
+    userId: returnRequest.userId,
+    type: decision === "approved" ? "refund_approved" : "refund_rejected",
+    title: decision === "approved" ? "Refund approved" : "Refund rejected",
+    message: decision === "approved"
+      ? `Your refund request for ${getReturnProductNames(returnRequest)} was approved.`
+      : `Your refund request for ${getReturnProductNames(returnRequest)} was rejected.`,
+    referenceId: String(returnRequest._id),
+    productId: String(returnRequest.items?.[0]?.productId || ""),
+    productName: getReturnProductNames(returnRequest),
+  });
 
 const RETURN_WINDOW_DAYS = 30;
 const RETURN_WINDOW_MS = RETURN_WINDOW_DAYS * 24 * 60 * 60 * 1000;
@@ -234,6 +251,7 @@ const rejectReturnRequest = async (req, res) => {
     returnReq.resolutionDate = resolvedAt;
     returnReq.reviewedBy = getReviewerId(req);
     await returnReq.save();
+    await notifyReturnResolution(returnReq, "rejected");
 
     return res.status(200).json({ success: true, data: returnReq });
   } catch (error) {
@@ -322,9 +340,14 @@ const approveReturnRequest = async (req, res) => {
       }
 
       await session.commitTransaction();
+      await notifyReturnResolution(returnReq, "approved");
 
       // Send refund approval email to customer (outside transaction)
       try {
+        if (mongoose.connection.readyState !== 1) {
+          return res.status(200).json({ success: true, data: returnReq });
+        }
+
         const customer = await User.findById(returnReq.userId).select("name email");
         if (customer) {
           const productNames = returnReq.items.map((i) => i.name).join(", ");

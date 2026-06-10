@@ -151,6 +151,7 @@ import {
   downloadSalesInvoice,
   getSalesInvoices,
 } from '../../api/invoiceApi'
+import { formatDisplayDate } from '../../utils/dateFormat'
 
 const toDateInput = (date) => {
   const month = String(date.getMonth() + 1).padStart(2, '0')
@@ -208,8 +209,7 @@ const formatCurrency = (value) => {
 }
 
 const formatDate = (value) => {
-  if (!value) return 'Unknown date'
-  return new Date(value).toLocaleDateString()
+  return formatDisplayDate(value)
 }
 
 const printInvoices = () => {

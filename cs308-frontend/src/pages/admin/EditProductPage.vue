@@ -52,6 +52,7 @@ const handleUpdate = async (formData) => {
   try {
     const payload = { ...formData }
     delete payload.productId
+    delete payload.price
     await updateProduct(route.params.id, payload)
     router.push('/admin/products')
   } catch (err) {

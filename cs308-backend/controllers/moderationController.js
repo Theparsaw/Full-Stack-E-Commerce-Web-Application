@@ -2,6 +2,18 @@ const Review = require("../models/Review");
 const ModerationLog = require("../models/ModerationLog");
 const AppError = require("../utils/appError");
 const asyncHandler = require("../utils/asyncHandler");
+const { createCustomerNotification } = require("../utils/createCustomerNotification");
+
+const notifyReviewResolution = (review, decision) =>
+  createCustomerNotification({
+    userId: review.userId,
+    type: decision === "approved" ? "review_approved" : "review_rejected",
+    title: decision === "approved" ? "Review approved" : "Review rejected",
+    message: `Your review for product ${review.productId} was ${decision}.`,
+    referenceId: String(review._id),
+    productId: review.productId,
+    productName: `Product ${review.productId}`,
+  });
 
 const getPendingReviews = asyncHandler(async (req, res) => {
   const pendingReviews = await Review.find({
@@ -37,6 +49,7 @@ const approveReview = asyncHandler(async (req, res) => {
     reviewId: id,
     action: "APPROVED",
   });
+  await notifyReviewResolution(review, "approved");
 
   return res.status(200).json({
     success: true,
@@ -67,6 +80,7 @@ const rejectReview = asyncHandler(async (req, res) => {
     reviewId: id,
     action: "REJECTED",
   });
+  await notifyReviewResolution(review, "rejected");
 
   return res.status(200).json({
     success: true,
