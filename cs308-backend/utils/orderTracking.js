@@ -184,6 +184,7 @@ const serializeTrackedOrder = (order, delivery = null) => {
   return {
     ...baseOrder,
     deliveryStatus,
+    deliveryAddress: delivery?.address || null,
     trackingNumber: `TRK-${String(order._id).slice(-8).toUpperCase()}`,
     estimatedDeliveryAt: getEstimatedDeliveryAt(order, deliveryStatus),
     timeline,

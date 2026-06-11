@@ -64,9 +64,13 @@ describe("orderTracking utilities", () => {
   });
 
   test("uses valid delivery status from the delivery record", () => {
-    const tracked = serializeTrackedOrder(createOrder(), { status: "out_for_delivery" });
+    const tracked = serializeTrackedOrder(createOrder(), {
+      status: "out_for_delivery",
+      address: "123 Test Street",
+    });
 
     expect(tracked.deliveryStatus).toBe("out_for_delivery");
+    expect(tracked.deliveryAddress).toBe("123 Test Street");
     expect(tracked.timeline.map((step) => step.key)).toEqual([
       "processing",
       "out_for_delivery",

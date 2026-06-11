@@ -394,6 +394,12 @@
                     {{ order.estimatedDeliveryAt ? formatDate(order.estimatedDeliveryAt) : 'Unavailable' }}
                   </span>
                 </p>
+                <div class="mt-3 rounded-xl border border-gray-100 bg-gray-50 px-3 py-2 text-sm">
+                  <p class="font-medium text-gray-500">Delivery address</p>
+                  <p class="mt-1 whitespace-pre-line text-gray-700">
+                    {{ order.deliveryAddress || 'Unavailable' }}
+                  </p>
+                </div>
               </div>
 
               <div class="rounded-2xl bg-gray-50 px-4 py-3 text-sm text-gray-600">
